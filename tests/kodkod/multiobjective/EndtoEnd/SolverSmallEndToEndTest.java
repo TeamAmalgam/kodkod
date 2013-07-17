@@ -5,6 +5,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assume.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +35,7 @@ public class SolverSmallEndToEndTest {
 
 	@Before
 	public void setUp() {
+		assumeTrue(SATFactory.available(SATFactory.Z3));
 		moo_problem = new rooks_3_metrics_2();
 	}
 
