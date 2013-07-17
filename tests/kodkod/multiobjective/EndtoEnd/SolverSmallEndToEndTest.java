@@ -40,7 +40,7 @@ public class SolverSmallEndToEndTest {
 	@Test
 	public void TestEndToEnd() {
 		MultiObjectiveSolver solver = new MultiObjectiveSolver();
-		solver.options().setSolver(SATFactory.DefaultSAT4J);
+		solver.options().setSolver(SATFactory.Z3);
 		solver.options().setSymmetryBreaking(1000);
 
 		Iterator<Solution> solutions = solver.solveAll(moo_problem.getFormula(), 
