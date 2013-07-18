@@ -4,10 +4,12 @@
 package kodkod.multiobjective;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -116,6 +118,29 @@ public final class MetricPoint {
 			disjuncts.add(f);
 		}
 		return Formula.or(disjuncts);
+	}
+
+	// The BitSet is a mapping of bits to constraints
+	// Let bit_i represent obj_i
+	// Then if bit_i is 0, we have the constraint "metric_i <= val_i"
+	//  and if bit_i is 1, we have the constraint "metric_i >= val_i"
+	public Formula partitionConstraints(BitSet set) {
+		final List<Formula> conjuncts = new ArrayList<Formula>(values.size());
+		Set<Objective> objectives = values.keySet();
+		int bitIndex = 0;
+
+		// Since objectives is a SortedMap, iterating over the keys is deterministic
+		for (final Objective objective : objectives) {
+			int value = values.get(objective).intValue();
+			if (set.get(bitIndex)) {
+				conjuncts.add(objective.betterThanOrEqual(value));
+			} else {
+				conjuncts.add(objective.worseThanOrEqual(value));
+			}
+			bitIndex++;
+		}
+
+		return Formula.and(conjuncts);
 	}
 
 	public boolean dominates(final MetricPoint that) {
