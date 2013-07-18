@@ -56,7 +56,7 @@ public final class CheckpointedGuidedImprovementAlgorithm extends MultiObjective
 		Solution solution = incrementalSolveFirst(solver, problem.getConstraints(), problem.getBounds(), problem, null);
 		solver.checkpoint();
 
-		int stepsToFront = 0;
+		int stepsToFront = 1;
 		// While the current solution is satisfiable try to find a better one.
 		while (isSat(solution)) {
 			MetricPoint currentValues = null;
@@ -98,9 +98,9 @@ public final class CheckpointedGuidedImprovementAlgorithm extends MultiObjective
 			}
 
 			// Find another starting point.
-			// We don't count this as a step (for checkpointing) since it is a new starting point
 			solution = incrementalSolveOne(solver, currentValues.exclusionConstraint(), emptyBounds, problem, null);
 			solver.checkpoint();
+      stepsToFront += 1;
 
 			//count this step but first go to new index because it's a new base point
 			counter.nextIndex();
