@@ -99,7 +99,7 @@ public final class CheckpointedGuidedImprovementAlgorithm extends MultiObjective
 
 			// Find another starting point.
 			// We don't count this as a step (for checkpointing) since it is a new starting point
-			solution = incrementalSolveOne(solver, currentValues.exclusionConstraint(), problem.getBounds(), problem, null);
+			solution = incrementalSolveOne(solver, currentValues.exclusionConstraint(), emptyBounds, problem, null);
 			solver.checkpoint();
 
 			//count this step but first go to new index because it's a new base point
