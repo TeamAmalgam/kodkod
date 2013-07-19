@@ -57,14 +57,21 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         MetricPoint startingValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
         logger.log(Level.FINE, "Found a solution. At time: {0}, with values {1}", new Object[] { Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000), startingValues.values() });
 
+        // Disable MetricPoint logger temporarily
+        // Multiple threads will be calling the logger, so the output won't make sense
+        Logger metricPointLogger = Logger.getLogger(MetricPoint.class.toString());
+        Level metricPointLevel = metricPointLogger.getLevel();
+        metricPointLogger.setLevel(Level.INFO);
+        
         // Find the boundaries of the search space
         Formula boundaryConstraints = findBoundaries(problem, startingValues);
         exclusionConstraints.add(boundaryConstraints);
 
         // Number of threads is MIN(user value, # cores)
         // TODO: Make "user value" configurable
-        int poolSize = Math.min(1, Runtime.getRuntime().availableProcessors());
+        int poolSize = Math.min(8, Runtime.getRuntime().availableProcessors());
         ThreadPoolExecutor threadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(poolSize);
+        logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
 
         // Create the first task and submit it to the pool
         // Wrap the computation in a Future, so we can block until all tasks are done
@@ -76,6 +83,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         // If there's no future in the queue but the pool is active, there will be a future, so block on the queue for the future
         // If the queue is empty and the pool is idle, then we're all done
         while (futures.peek() != null || threadPool.getActiveCount() != 0) {
+        	logger.log(Level.FINE, "Queue has {0} elements.", futures.size());
             try {
                 futures.take().get();
             } catch (InterruptedException | ExecutionException e) {
@@ -88,6 +96,9 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
         logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
 
+        // Re-enable MetricPoint logging
+        metricPointLogger.setLevel(metricPointLevel);
+        
         end(notifier);
         debugWriteStatistics();
     }
@@ -110,6 +121,8 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
         @Override
         public void run() {
+        	//logger.log(Level.FINE, "Entering region with constraints: {0}", exclusionConstraints.toString());
+
             // Throw the dart within the current partition
             IncrementalSolver solver = IncrementalSolver.solver(getOptions());
             Solution solution = solver.solve(exclusionConstraints, problem.getBounds());
@@ -117,6 +130,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
             // Unsat means nothing in this partition, so we're done
             if (!isSat(solution)) {
+            	//logger.log(Level.FINE, "No solution found in the region: {0}", exclusionConstraints.toString());
                 return;
             }
 
@@ -149,7 +163,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
                 final Collection<Formula> assignmentsConstraints = currentValues.assignmentConstraints();
                 assignmentsConstraints.add(problem.getConstraints());
                 int solutionsFound = magnifier(Formula.and(assignmentsConstraints), problem.getBounds(), currentValues, notifier);
-                logger.log(Level.FINE, "Magnifying glass found {0} solution(s). At time: {1}", new Object[] {Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
+                logger.log(Level.FINE, "Magnifying glass on {0} found {1} solution(s). At time: {2}", new Object[] {currentValues.values(), Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
             }
 
             // Now we can split the search space based on the Pareto point and create new tasks
@@ -157,7 +171,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             // To iterate over this, we map the bits of a bitset to the different combinations of metrics
             // We skip 0 (the partition that is already dominated) and 2^n (the partition where we didn't find any solutions)
             // Store the tasks in a list so we can call invokeAll() on the entire list
-            int maxMapping = (int) Math.pow(2, problem.getObjectives().size());
+            int maxMapping = (int) Math.pow(2, problem.getObjectives().size()) - 1;
             for (int mapping = 1; mapping < maxMapping; mapping++) {
                 BitSet set = BitSet.valueOf(new long[] { mapping });
                 // Get the constraints for this particular mapping, and add to the queue
