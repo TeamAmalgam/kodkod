@@ -51,6 +51,12 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         MetricPoint startingValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
         logger.log(Level.FINE, "Found a solution. At time: {0}, with values {1}", new Object[] { Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000), startingValues.values() });
 
+        // Disable MetricPoint logger temporarily
+        // Multiple threads will be calling the logger, so the output won't make sense
+        Logger metricPointLogger = Logger.getLogger(MetricPoint.class.toString());
+        Level metricPointLevel = metricPointLogger.getLevel();
+        metricPointLogger.setLevel(Level.INFO);
+        
         // Find the boundaries of the search space
         Formula boundaryConstraints = findBoundaries(problem, startingValues);
 
@@ -65,6 +71,9 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
         // Wait for the thread to return
         pool.invoke(task);
+        
+        // Re-enable MetricPoint logging
+        metricPointLogger.setLevel(metricPointLevel);
 
         end(notifier);
         debugWriteStatistics();
@@ -168,12 +177,12 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
         private static final long serialVersionUID = 1L;
         private final MultiObjectiveProblem problem;
-        private Formula boundaryConstraints;
+        private Formula exclusionConstraints;
         private final SolutionNotifier notifier;
 
         public PartitionSpaceTask(MultiObjectiveProblem problem, Formula boundaryConstraints, SolutionNotifier notifier) {
             this.problem = problem;
-            this.boundaryConstraints = boundaryConstraints;
+            this.exclusionConstraints = boundaryConstraints;
             this.notifier = notifier;
         }
 
@@ -181,7 +190,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         protected void compute() {
             // Throw the dart within our partition
             IncrementalSolver solver = IncrementalSolver.solver(getOptions());
-            Formula constraints = problem.getConstraints().and(boundaryConstraints);
+            Formula constraints = problem.getConstraints().and(exclusionConstraints);
             Solution solution = solver.solve(constraints, problem.getBounds());
             incrementStats(solution, problem, constraints, false, constraints);
 
@@ -233,11 +242,11 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             // We skip 0 (the partition that is already dominated) and 2^n (the partition where we didn't find any solutions)
             // Store the tasks in a list so we can call invokeAll() on the entire list
             List<PartitionSpaceTask> partitionTasks = new ArrayList<PartitionSpaceTask>();
-            int maxMapping = (int) Math.pow(2, problem.getObjectives().size());
+            int maxMapping = (int) Math.pow(2, problem.getObjectives().size()) - 1;
             for (int mapping = 1; mapping < maxMapping; mapping++) {
                 BitSet set = BitSet.valueOf(new long[] { mapping });
                 // Get the constraints for this particular mapping, and add to a list of tasks
-                Formula constraint = boundaryConstraints.and(currentValues.partitionConstraints(set));
+                Formula constraint = exclusionConstraints.and(currentValues.exclusionConstraint()).and(currentValues.partitionConstraints(set));
                 partitionTasks.add(new PartitionSpaceTask(problem, constraint, notifier));
             }
 

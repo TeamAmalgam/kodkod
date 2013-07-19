@@ -122,8 +122,9 @@ public final class MetricPoint {
 
 	// The BitSet is a mapping of bits to constraints
 	// Let bit_i represent obj_i
-	// Then if bit_i is 0, we have the constraint "metric_i <= val_i"
+	// Then if bit_i is 0, we have the constraint "metric_i <  val_i"
 	//  and if bit_i is 1, we have the constraint "metric_i >= val_i"
+	// We bias the constraints so we don't include the boundary in multiple partitions
 	public Formula partitionConstraints(BitSet set) {
 		final List<Formula> conjuncts = new ArrayList<Formula>(values.size());
 		Set<Objective> objectives = values.keySet();
@@ -135,10 +136,17 @@ public final class MetricPoint {
 			if (set.get(bitIndex)) {
 				conjuncts.add(objective.betterThanOrEqual(value));
 			} else {
-				conjuncts.add(objective.worseThanOrEqual(value));
+				conjuncts.add(objective.worseThan(value));
 			}
 			bitIndex++;
 		}
+		
+		StringBuilder sb = new StringBuilder("Partition constraints are conjunction of ");
+		for (Formula aConjunction : conjuncts) {
+			sb.append("\n\t");
+			sb.append(aConjunction);
+		}
+		logger.log(Level.FINE, sb.toString());
 
 		return Formula.and(conjuncts);
 	}
