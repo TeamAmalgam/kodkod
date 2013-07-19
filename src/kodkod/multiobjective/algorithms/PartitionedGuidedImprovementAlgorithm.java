@@ -139,45 +139,65 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             // counter.countStep();
 
             // Work up to the Pareto front
-            MetricPoint currentValues = null;
-            Solution previousSolution = null;
+	        MetricPoint currentValues = null;
+	        Solution previousSolution = null;
             while (isSat(solution)) {
-                currentValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
-                Formula improvementConstraints = currentValues.parametrizedImprovementConstraints();
-                previousSolution = solution;
-                solution = solver.solve(improvementConstraints, new Bounds(problem.getBounds().universe()));
-                incrementStats(solution, problem, improvementConstraints, false, improvementConstraints);
-                counter.countStep();
-            }
-            foundParetoPoint(currentValues);
-
-            // Free the solver's resources, since we will be creating a new solver
-            solver.free();
-
-            if (!options.allSolutionsPerPoint()) {
-                // no magnifying glass
-                // previous solution was on the pareto front: report it
-                tell(notifier, previousSolution, currentValues);
-            } else {
-                // magnifying glass
-                final Collection<Formula> assignmentsConstraints = currentValues.assignmentConstraints();
-                assignmentsConstraints.add(problem.getConstraints());
-                int solutionsFound = magnifier(Formula.and(assignmentsConstraints), problem.getBounds(), currentValues, notifier);
-                logger.log(Level.FINE, "Magnifying glass on {0} found {1} solution(s). At time: {2}", new Object[] {currentValues.values(), Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
-            }
-
-            // Now we can split the search space based on the Pareto point and create new tasks
-            // For n metrics, we want all combinations of m_i <= M_i and m_i >= M_i where M_i is the current value
-            // To iterate over this, we map the bits of a bitset to the different combinations of metrics
-            // We skip 0 (the partition that is already dominated) and 2^n (the partition where we didn't find any solutions)
-            // Store the tasks in a list so we can call invokeAll() on the entire list
-            int maxMapping = (int) Math.pow(2, problem.getObjectives().size()) - 1;
-            for (int mapping = 1; mapping < maxMapping; mapping++) {
-                BitSet set = BitSet.valueOf(new long[] { mapping });
-                // Get the constraints for this particular mapping, and add to the queue
-                Formula constraint = exclusionConstraints.and(currentValues.exclusionConstraint()).and(currentValues.partitionConstraints(set));
-                Future<?> future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, threadPool, futures));
-                futures.add(future);
+		        while (isSat(solution)) {
+		            currentValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
+		            Formula improvementConstraints = currentValues.parametrizedImprovementConstraints();
+		            previousSolution = solution;
+		            solution = solver.solve(improvementConstraints, new Bounds(problem.getBounds().universe()));
+		            incrementStats(solution, problem, improvementConstraints, false, improvementConstraints);
+		            //counter.countStep();
+		        }
+		        foundParetoPoint(currentValues);
+		
+		        // Free the solver's resources, since we will be creating a new solver
+		        solver.free();
+		
+		        if (!options.allSolutionsPerPoint()) {
+		            // no magnifying glass
+		            // previous solution was on the pareto front: report it
+		            tell(notifier, previousSolution, currentValues);
+		        } else {
+		            // magnifying glass
+		            final Collection<Formula> assignmentsConstraints = currentValues.assignmentConstraints();
+		            assignmentsConstraints.add(problem.getConstraints());
+		            int solutionsFound = magnifier(Formula.and(assignmentsConstraints), problem.getBounds(), currentValues, notifier);
+		            logger.log(Level.FINE, "Magnifying glass on {0} found {1} solution(s). At time: {2}", new Object[] {currentValues.values(), Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
+		        }
+		        
+		        // If there's a small number of tasks, continue partitioning
+		        // Otherwise, don't partition and do the regular GIA here
+	            int maxMapping = (int) Math.pow(2, problem.getObjectives().size()) - 1;
+		        if (futures.size() + maxMapping < 10) {
+		            // Now we can split the search space based on the Pareto point and create new tasks
+		            // For n metrics, we want all combinations of m_i <= M_i and m_i >= M_i where M_i is the current value
+		            // To iterate over this, we map the bits of a bitset to the different combinations of metrics
+		            // We skip 0 (the partition that is already dominated) and 2^n (the partition where we didn't find any solutions)
+		            // Store the tasks in a list so we can call invokeAll() on the entire list
+		            logger.log(Level.FINE, "Partitioning the problem space");
+		            for (int mapping = 1; mapping < maxMapping; mapping++) {
+		                BitSet set = BitSet.valueOf(new long[] { mapping });
+		                // Get the constraints for this particular mapping, and add to the queue
+		                Formula constraint = exclusionConstraints.and(currentValues.exclusionConstraint()).and(currentValues.partitionConstraints(set));
+		                Future<?> future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, threadPool, futures));
+		                futures.add(future);
+		            }
+		            
+		            return;
+		        }
+		        
+		        // Find another starting point
+				solver = IncrementalSolver.solver(getOptions());
+				exclusionConstraints = exclusionConstraints.and(currentValues.exclusionConstraint());
+				
+				solution = solver.solve(exclusionConstraints, problem.getBounds());
+				incrementStats(solution, problem, exclusionConstraints, false, null);
+				
+				//count this step but first go to new index because it's a new base point
+				//counter.nextIndex();
+				//counter.countStep();
             }
 
         }
