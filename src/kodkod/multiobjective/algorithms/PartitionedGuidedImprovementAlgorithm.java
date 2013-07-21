@@ -49,58 +49,107 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         final List<Formula> exclusionConstraints = new ArrayList<Formula>();
         exclusionConstraints.add(problem.getConstraints());
 
-        // Throw a dart and get a starting point
-        Solution solution = getSolver().solve(problem.getConstraints(), problem.getBounds());
-        incrementStats(solution, problem, problem.getConstraints(), true, null);
-        solveFirstStats(solution);
-
-        MetricPoint startingValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
-        logger.log(Level.FINE, "Found a solution. At time: {0}, with values {1}", new Object[] { Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000), startingValues.values() });
-
         // Disable MetricPoint logger temporarily
         // Multiple threads will be calling the logger, so the output won't make sense
         Logger metricPointLogger = Logger.getLogger(MetricPoint.class.toString());
         Level metricPointLevel = metricPointLogger.getLevel();
         metricPointLogger.setLevel(Level.INFO);
         
-        // Find the boundaries of the search space
-        Formula boundaryConstraints = findBoundaries(problem, startingValues);
-        exclusionConstraints.add(boundaryConstraints);
-
-        // Number of threads is MIN(user value, # cores)
-        // TODO: Make "user value" configurable
-        int poolSize = Math.min(8, Runtime.getRuntime().availableProcessors());
-        ThreadPoolExecutor threadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(poolSize);
-        logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
-
-        // Create the first task and submit it to the pool
-        // Wrap the computation in a Future, so we can block until all tasks are done
-        BlockingQueue<Future<?>> futures = new LinkedBlockingQueue<Future<?>>();
-        Future<?> future = threadPool.submit(new PartitionedSearcher(problem, Formula.and(exclusionConstraints), notifier, threadPool, futures));
-        futures.add(future);
-
-        // If there's a future in the queue, we're not done, so take it and block on the future
-        // If there's no future in the queue but the pool is active, there will be a future, so block on the queue for the future
-        // If the queue is empty and the pool is idle, then we're all done
-        while (futures.peek() != null || threadPool.getActiveCount() != 0) {
-        	logger.log(Level.FINE, "Queue has {0} elements.", futures.size());
-            try {
-                futures.take().get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-                throw new RuntimeException();
-            }
+        // Skip boundary finding if there's only one objective
+        if (problem.getObjectives().size() > 1) {
+	        // Throw a dart and get a starting point
+	        Solution solution = getSolver().solve(problem.getConstraints(), problem.getBounds());
+	        incrementStats(solution, problem, problem.getConstraints(), true, null);
+	        solveFirstStats(solution);
+	
+	        MetricPoint startingValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
+	        logger.log(Level.FINE, "Found a solution. At time: {0}, with values {1}", new Object[] { Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000), startingValues.values() });
+		        
+	        // Find the boundaries of the search space
+	        Formula boundaryConstraints = findBoundaries(problem, startingValues);
+	        exclusionConstraints.add(boundaryConstraints);
         }
-
-        threadPool.shutdown();
-
-        logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
-
-        // Re-enable MetricPoint logging
-        metricPointLogger.setLevel(metricPointLevel);
         
-        end(notifier);
-        debugWriteStatistics();
+        // For now, special case 2 objectives
+        // All others will fall back to IGIA
+        
+        if (problem.getObjectives().size() == 2) {
+            // Throw the dart within the current partition
+            IncrementalSolver solver = IncrementalSolver.solver(getOptions());
+            Formula constraint = Formula.and(exclusionConstraints);
+            Solution solution = solver.solve(constraint, problem.getBounds());
+            incrementStats(solution, problem, constraint, false, constraint);
+            
+            // Work up to the Pareto point
+            MetricPoint currentValues = null;
+            Solution previousSolution = null;
+            while (isSat(solution)) {
+	            currentValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
+	            Formula improvementConstraints = currentValues.parametrizedImprovementConstraints();
+	            previousSolution = solution;
+	            solution = solver.solve(improvementConstraints, new Bounds(problem.getBounds().universe()));
+	            incrementStats(solution, problem, improvementConstraints, false, improvementConstraints);
+            }
+            foundParetoPoint(currentValues);
+            
+	        // Free the solver's resources, since we will be creating a new solver
+	        solver.free();
+	
+	        if (!options.allSolutionsPerPoint()) {
+	            // no magnifying glass
+	            // previous solution was on the pareto front: report it
+	            tell(notifier, previousSolution, currentValues);
+	        } else {
+	            // magnifying glass
+	            final Collection<Formula> assignmentsConstraints = currentValues.assignmentConstraints();
+	            assignmentsConstraints.add(problem.getConstraints());
+	            int solutionsFound = magnifier(Formula.and(assignmentsConstraints), problem.getBounds(), currentValues, notifier);
+	            logger.log(Level.FINE, "Magnifying glass on {0} found {1} solution(s). At time: {2}", new Object[] {currentValues.values(), Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
+	        }
+	        exclusionConstraints.add(currentValues.exclusionConstraint());
+	        
+	        // Now split into two partitions and schedule those tasks
+        	
+	        // Number of threads is MIN(# objectives = 2, # cores)
+	        BlockingQueue<Future<?>> futures = new LinkedBlockingQueue<Future<?>>();
+	        int poolSize = Math.min(2, Runtime.getRuntime().availableProcessors());
+	        ThreadPoolExecutor threadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(poolSize);
+	        logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
+	        
+	        // Wrap the computation in a Future, so we can block until all tasks are done
+	        // Queue up the lower right partition
+	        BitSet set = BitSet.valueOf(new long[] { 1 });
+	        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+	        Future<?> future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, threadPool, futures));
+	        futures.add(future);
+	        // Queue up the upper left partition
+	        set = BitSet.valueOf(new long[] { 2 });
+	        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+	        future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, threadPool, futures));
+	        futures.add(future);
+	        
+	        // We know there are only two tasks in the pool, so try to take from the futures queue twice
+	        for (int i = 0; i < 2; i++) {
+	        	try {
+	        		futures.take().get();
+	        	} catch (InterruptedException | ExecutionException e) {
+	        		e.printStackTrace();
+	        		throw new RuntimeException(e);
+	        	}
+	        }
+	        threadPool.shutdown();
+		
+	        logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
+	
+	        // Re-enable MetricPoint logging
+	        metricPointLogger.setLevel(metricPointLevel);
+	        
+	        end(notifier);
+	        debugWriteStatistics();
+        } else {
+        	MultiObjectiveAlgorithm algorithm = new IncrementalGuidedImprovementAlgorithm("IGIA", options);
+        	algorithm.multiObjectiveSolve(problem, notifier);
+        }
     }
 
     private class PartitionedSearcher implements Runnable {
@@ -165,27 +214,6 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 		            assignmentsConstraints.add(problem.getConstraints());
 		            int solutionsFound = magnifier(Formula.and(assignmentsConstraints), problem.getBounds(), currentValues, notifier);
 		            logger.log(Level.FINE, "Magnifying glass on {0} found {1} solution(s). At time: {2}", new Object[] {currentValues.values(), Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
-		        }
-		        
-		        // If there's a small number of tasks, continue partitioning
-		        // Otherwise, don't partition and do the regular GIA here
-	            int maxMapping = (int) Math.pow(2, problem.getObjectives().size()) - 1;
-		        if (futures.size() + maxMapping < 10) {
-		            // Now we can split the search space based on the Pareto point and create new tasks
-		            // For n metrics, we want all combinations of m_i <= M_i and m_i >= M_i where M_i is the current value
-		            // To iterate over this, we map the bits of a bitset to the different combinations of metrics
-		            // We skip 0 (the partition that is already dominated) and 2^n (the partition where we didn't find any solutions)
-		            // Store the tasks in a list so we can call invokeAll() on the entire list
-		            logger.log(Level.FINE, "Partitioning the problem space");
-		            for (int mapping = 1; mapping < maxMapping; mapping++) {
-		                BitSet set = BitSet.valueOf(new long[] { mapping });
-		                // Get the constraints for this particular mapping, and add to the queue
-		                Formula constraint = exclusionConstraints.and(currentValues.exclusionConstraint()).and(currentValues.partitionConstraints(set));
-		                Future<?> future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, threadPool, futures));
-		                futures.add(future);
-		            }
-		            
-		            return;
 		        }
 		        
 		        // Find another starting point
