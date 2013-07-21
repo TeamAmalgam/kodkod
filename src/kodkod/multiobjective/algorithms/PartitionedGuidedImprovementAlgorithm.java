@@ -3,6 +3,7 @@ package kodkod.multiobjective.algorithms;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
@@ -56,7 +57,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         metricPointLogger.setLevel(Level.INFO);
         
         // Skip boundary finding if there's only one objective
-        if (problem.getObjectives().size() > 1) {
+        if (problem.getObjectives().size() > 10) {
 	        // Throw a dart and get a starting point
 	        Solution solution = getSolver().solve(problem.getConstraints(), problem.getBounds());
 	        incrementStats(solution, problem, problem.getConstraints(), true, null);
@@ -70,10 +71,10 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 	        exclusionConstraints.add(boundaryConstraints);
         }
         
-        // For now, special case 2 objectives
+        // For now, special case 2 and 3 objectives
         // All others will fall back to IGIA
         
-        if (problem.getObjectives().size() == 2) {
+        if (problem.getObjectives().size() == 2 || problem.getObjectives().size() == 3) {
             // Throw the dart within the current partition
             IncrementalSolver solver = IncrementalSolver.solver(getOptions());
             Formula constraint = Formula.and(exclusionConstraints);
@@ -108,36 +109,94 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 	        }
 	        exclusionConstraints.add(currentValues.exclusionConstraint());
 	        
-	        // Now split into two partitions and schedule those tasks
-        	
-	        // Number of threads is MIN(# objectives = 2, # cores)
-	        BlockingQueue<Future<?>> futures = new LinkedBlockingQueue<Future<?>>();
-	        int poolSize = Math.min(2, Runtime.getRuntime().availableProcessors());
-	        ThreadPoolExecutor threadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(poolSize);
-	        logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
+	        // Now split into partitions and schedule those tasks
 	        
-	        // Wrap the computation in a Future, so we can block until all tasks are done
-	        // Queue up the lower right partition
-	        BitSet set = BitSet.valueOf(new long[] { 1 });
-	        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
-	        Future<?> future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, threadPool, futures));
-	        futures.add(future);
-	        // Queue up the upper left partition
-	        set = BitSet.valueOf(new long[] { 2 });
-	        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
-	        future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, threadPool, futures));
-	        futures.add(future);
-	        
-	        // We know there are only two tasks in the pool, so try to take from the futures queue twice
-	        for (int i = 0; i < 2; i++) {
-	        	try {
-	        		futures.take().get();
-	        	} catch (InterruptedException | ExecutionException e) {
-	        		e.printStackTrace();
-	        		throw new RuntimeException(e);
-	        	}
-	        }
-	        threadPool.shutdown();
+        	if (problem.getObjectives().size() == 2) {
+		        // Number of threads is MIN(# objectives = 2, # cores)
+		        BlockingQueue<Future<Formula>> futures = new LinkedBlockingQueue<Future<Formula>>();
+		        int poolSize = Math.min(2, Runtime.getRuntime().availableProcessors());
+		        ThreadPoolExecutor threadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(poolSize);
+		        logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
+		        
+		        // Wrap the computation in a Future, so we can block until all tasks are done
+		        // Queue up the lower right partition
+		        BitSet set = BitSet.valueOf(new long[] { 1 });
+		        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+		        Future<Formula> future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, null));
+		        futures.add(future);
+		        // Queue up the upper left partition
+		        set = BitSet.valueOf(new long[] { 2 });
+		        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+		        future = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, null));
+		        futures.add(future);
+		        
+		        // We know there are only two tasks in the pool, so try to take from the futures queue twice
+		        for (int i = 0; i < 2; i++) {
+		        	try {
+		        		futures.take().get();
+		        	} catch (InterruptedException | ExecutionException e) {
+		        		e.printStackTrace();
+		        		throw new RuntimeException(e);
+		        	}
+		        }
+		        threadPool.shutdown();
+        	} else if (problem.getObjectives().size() == 3) {
+		        // Number of threads is MIN(# objectives = 3, # cores)
+		        BlockingQueue<Future<Formula>> futures = new LinkedBlockingQueue<Future<Formula>>();
+		        int poolSize = Math.min(3, Runtime.getRuntime().availableProcessors());
+		        ThreadPoolExecutor threadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(poolSize);
+		        logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
+		        
+		        // Wrap the computation in a Future, so we can block until all tasks are done
+		        BitSet set = BitSet.valueOf(new long[] { 3 });
+		        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+		        Future<Formula> future3 = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, null));
+		        futures.add(future3);
+		        set = BitSet.valueOf(new long[] { 5 });
+		        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+		        Future<Formula> future5 = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, null));
+		        futures.add(future5);
+		        set = BitSet.valueOf(new long[] { 6 });
+		        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+		        Future<Formula> future6 = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, null));
+		        futures.add(future6);
+
+		        
+		        // First batch of three done, next batch
+		        set = BitSet.valueOf(new long[] { 4 });
+		        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+		        Queue<Future<Formula>> dependencies = new LinkedList<Future<Formula>>();
+		        dependencies.add(future5);
+		        dependencies.add(future6);
+		        Future<Formula> future4 = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, dependencies));
+		        futures.add(future4);
+		        set = BitSet.valueOf(new long[] { 2 });
+		        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+		        dependencies = new LinkedList<Future<Formula>>();
+		        dependencies.add(future6);
+		        dependencies.add(future3);
+		        Future<Formula> future2 = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, dependencies));
+		        futures.add(future2);
+		        set = BitSet.valueOf(new long[] { 1 });
+		        constraint = Formula.and(exclusionConstraints).and(currentValues.partitionConstraints(set));
+		        dependencies = new LinkedList<Future<Formula>>();
+		        dependencies.add(future5);
+		        dependencies.add(future3);
+		        Future<Formula> future1 = threadPool.submit(new PartitionedSearcher(problem, constraint, notifier, dependencies));
+		        futures.add(future1);
+		        
+		        // We know there are only three tasks in the pool, so try to take from the futures queue twice
+		        for (int i = 0; i < 6; i++) {
+		        	try {
+		        		Formula f = futures.take().get();
+		        	} catch (InterruptedException | ExecutionException e) {
+		        		e.printStackTrace();
+		        		throw new RuntimeException(e);
+		        	}
+		        }
+		        
+		        threadPool.shutdown();
+        	}
 		
 	        logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
 	
@@ -152,35 +211,47 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         }
     }
 
-    private class PartitionedSearcher implements Runnable {
+    private class PartitionedSearcher implements Callable<Formula> {
 
         private final MultiObjectiveProblem problem;
+        private Formula constraints;
         private Formula exclusionConstraints;
         private final SolutionNotifier notifier;
-        private final ExecutorService threadPool;
-        private final Queue<Future<?>> futures;
+        private final Queue<Future<Formula>> dependencies;
 
-        public PartitionedSearcher(MultiObjectiveProblem problem, Formula exclusionConstraints, SolutionNotifier notifier, ExecutorService threadPool, Queue<Future<?>> futures) {
+        public PartitionedSearcher(MultiObjectiveProblem problem, Formula constraints, SolutionNotifier notifier, Queue<Future<Formula>> dependencies) {
             this.problem = problem;
-            this.exclusionConstraints = exclusionConstraints;
+            this.constraints = constraints;
+            this.exclusionConstraints = Formula.constant(true);
             this.notifier = notifier;
-            this.threadPool = threadPool;
-            this.futures = futures;
+            this.dependencies = dependencies;
         }
 
         @Override
-        public void run() {
+        public Formula call() {
+        	// Wait for dependencies
+        	// Add the exclusion constraints from dependencies
+        	if (dependencies != null) {
+        		for (Future<Formula> dep : dependencies) {
+        			try {
+						Formula f = dep.get();
+						constraints = constraints.and(f);
+					} catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+        		}
+        	}
         	//logger.log(Level.FINE, "Entering region with constraints: {0}", exclusionConstraints.toString());
 
             // Throw the dart within the current partition
             IncrementalSolver solver = IncrementalSolver.solver(getOptions());
-            Solution solution = solver.solve(exclusionConstraints, problem.getBounds());
-            incrementStats(solution, problem, exclusionConstraints, false, exclusionConstraints);
+            Solution solution = solver.solve(constraints, problem.getBounds());
+            incrementStats(solution, problem, constraints, false, constraints);
 
             // Unsat means nothing in this partition, so we're done
             if (!isSat(solution)) {
             	//logger.log(Level.FINE, "No solution found in the region: {0}", exclusionConstraints.toString());
-                return;
+                return Formula.constant(true);
             }
 
             // TODO: Semantics are wrong if this is the first Pareto point; don't want to call nextIndex() yet
@@ -218,16 +289,18 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 		        
 		        // Find another starting point
 				solver = IncrementalSolver.solver(getOptions());
+				constraints = constraints.and(currentValues.exclusionConstraint());
 				exclusionConstraints = exclusionConstraints.and(currentValues.exclusionConstraint());
 				
-				solution = solver.solve(exclusionConstraints, problem.getBounds());
-				incrementStats(solution, problem, exclusionConstraints, false, null);
+				solution = solver.solve(constraints, problem.getBounds());
+				incrementStats(solution, problem, constraints, false, null);
 				
 				//count this step but first go to new index because it's a new base point
 				//counter.nextIndex();
 				//counter.countStep();
             }
 
+            return exclusionConstraints;
         }
     }
 
