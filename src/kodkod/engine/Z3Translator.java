@@ -1,6 +1,7 @@
 package kodkod.engine;
 
 import kodkod.ast.*;
+import kodkod.ast.operator.*;
 import kodkod.ast.visitor.ReturnVisitor;
 import kodkod.instance.Bounds;
 import kodkod.instance.Instance;
@@ -81,11 +82,28 @@ public final class Z3Translator
     }
 
     public IntExpr visit(IntConstant intConst) {
-        throw new RuntimeException("Not Implemented Yet.");
+        IntExpr toReturn;
+        try {
+            toReturn = context.MkInt(intConst.value());
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public IntExpr visit(IfIntExpression intExpr) {
-        throw new RuntimeException("Not Implemented Yet.");
+        BoolExpr condition = intExpr.condition().accept(this);
+        IntExpr thenExpr = intExpr.thenExpr().accept(this);
+        IntExpr elseExpr = intExpr.elseExpr().accept(this);
+        IntExpr toReturn;
+        
+        try {
+            toReturn = (IntExpr)context.MkITE(condition, thenExpr, elseExpr);
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        return toReturn;
     }
 
     public IntExpr visit(ExprToIntCast intExpr) {
@@ -93,15 +111,95 @@ public final class Z3Translator
     }
 
     public IntExpr visit(NaryIntExpression intExpr) {
-        throw new RuntimeException("Not Implemented Yet.");
+        IntExpr[] exprs = new IntExpr[intExpr.size()];
+        for(int i = 0; i < intExpr.size(); i += 1) {
+            exprs[i] = intExpr.child(i).accept(this);
+        }
+
+        IntExpr toReturn;
+        try {
+            switch(intExpr.op()) {
+                case PLUS:
+                    toReturn = (IntExpr)context.MkAdd(exprs);
+                    break;
+                case MULTIPLY:
+                    toReturn = (IntExpr)context.MkMul(exprs);
+                    break;
+                case AND:
+                    throw new RuntimeException("Not implemented yet.");
+                case OR:
+                    throw new RuntimeException("Not implemented yet.");
+                default:
+                    throw new RuntimeException("Unsupported IntOperator " + intExpr.op());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        return toReturn;
     }
 
     public IntExpr visit(BinaryIntExpression intExpr) {
-        throw new RuntimeException("Not Implemented Yet.");
+        IntExpr left = intExpr.left().accept(this);
+        IntExpr right = intExpr.right().accept(this);
+
+        IntExpr toReturn;
+        try {
+            switch(intExpr.op()) {
+                case PLUS:
+                    toReturn = (IntExpr)context.MkAdd(new IntExpr[]{left, right});
+                    break;
+                case MULTIPLY:
+                    toReturn = (IntExpr)context.MkMul(new IntExpr[]{left, right});
+                    break;
+                case MINUS:
+                    toReturn = (IntExpr)context.MkDiv(left, right);
+                    break;
+                case MODULO:
+                    toReturn = (IntExpr)context.MkMod(left, right);
+                    break;
+                case AND:
+                    throw new RuntimeException("Not implemented yet.");
+                case OR:
+                    throw new RuntimeException("Not implemented yet.");
+                case XOR:
+                    throw new RuntimeException("Not implemented yet.");
+                case SHL:
+                    throw new RuntimeException("Not implemented yet.");
+                case SHR:
+                    throw new RuntimeException("Not implemented yet.");
+                case SHA:
+                    throw new RuntimeException("Not implemented yet.");
+                default:
+                    throw new RuntimeException("Unsupported IntOperator " + intExpr.op());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public IntExpr visit(UnaryIntExpression intExpr) {
-        throw new RuntimeException("Not Implemneted Yet.");
+        IntExpr internalExpr = intExpr.intExpr().accept(this);
+        IntExpr toReturn;
+        try {
+            switch(intExpr.op()) {
+                case NEG:
+                    toReturn = (IntExpr)context.MkUnaryMinus(internalExpr);
+                    break;
+                case ABS:
+                    throw new RuntimeException("Not implemented yet.");
+                case NOT:
+                    throw new RuntimeException("Not implemented yet.");
+                case SGN:
+                    throw new RuntimeException("NotImplemented yet.");
+                default:
+                    throw new RuntimeException("Unsupported IntOperator " + intExpr.op());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public IntExpr visit(SumExpression intExpr) {
@@ -109,7 +207,33 @@ public final class Z3Translator
     }
 
     public BoolExpr visit(IntComparisonFormula intComp) {
-        throw new RuntimeException("Not Implemented Yet.");
+        IntExpr left = intComp.left().accept(this);
+        IntExpr right = intComp.right().accept(this);
+        BoolExpr toReturn;
+        try {
+            switch(intComp.op()) {
+                case EQ:
+                    toReturn = context.MkEq(left, right);
+                    break;
+                case LT:
+                    toReturn = context.MkLt(left, right);
+                    break;
+                case LTE:
+                    toReturn = context.MkLe(left, right);
+                    break;
+                case GT:
+                    toReturn = context.MkGt(left, right);
+                    break;
+                case GTE:
+                    toReturn = context.MkGe(left, right);
+                    break;
+                default:
+                    throw new RuntimeException("Unsupported IntCompOperator " + intComp.op());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public BoolExpr visit(QuantifiedFormula quantFormula) {
@@ -117,19 +241,74 @@ public final class Z3Translator
     }
 
     public BoolExpr visit(NaryFormula formula) {
-        throw new RuntimeException("Not Implemented Yet.");
+        BoolExpr[] exprs = new BoolExpr[formula.size()];
+        for (int i = 0; i < formula.size(); i++) {
+            exprs[i] = formula.child(i).accept(this);
+        }
+        BoolExpr toReturn;
+        try {
+            switch(formula.op()) {
+                case AND:
+                    toReturn = context.MkAnd(exprs);
+                    break;
+                case OR:
+                    toReturn = context.MkOr(exprs);
+                    break;
+                default:
+                    throw new RuntimeException("Invalid formula operator " + formula.op());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public BoolExpr visit(BinaryFormula binFormula) {
-        throw new RuntimeException("Not Implemented Yet.");
+        BoolExpr left = binFormula.left().accept(this);
+        BoolExpr right = binFormula.right().accept(this);
+        BoolExpr toReturn;
+        try {
+            switch(binFormula.op()) {
+                case AND:
+                    toReturn = context.MkAnd(new BoolExpr[]{left, right});
+                    break;
+                case OR:
+                    toReturn = context.MkOr(new BoolExpr[]{left, right});
+                    break;
+                case IFF:
+                    toReturn = context.MkIff(left, right);
+                    break;
+                case IMPLIES:
+                    toReturn = context.MkImplies(left, right);
+                    break;
+                default:
+                    throw new RuntimeException("Invalid formula operator " + binFormula.op());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public BoolExpr visit(NotFormula not) {
-        throw new RuntimeException("Not Implemented Yet.");
+        BoolExpr innerFormula = not.formula().accept(this);
+        BoolExpr toReturn;
+        try {
+            toReturn = context.MkNot(innerFormula);
+        } catch(Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public BoolExpr visit(ConstantFormula constant) {
-        throw new RuntimeException("Not Implemented Yet.");
+        BoolExpr toReturn;
+        try {
+            toReturn = context.MkBool(constant.booleanValue());
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public BoolExpr visit(ComparisonFormula compFormula) {
