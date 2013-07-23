@@ -1,11 +1,14 @@
 package kodkod.engine;
 
+import com.microsoft.z3.*;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.HashMap;
 import kodkod.ast.*;
 import kodkod.ast.operator.*;
 import kodkod.ast.visitor.ReturnVisitor;
 import kodkod.instance.Bounds;
 import kodkod.instance.Instance;
-import com.microsoft.z3.*;
 
 public final class Z3Translator 
     implements ReturnVisitor<Expr, BoolExpr, Expr, IntExpr> {
@@ -14,14 +17,94 @@ public final class Z3Translator
     private final Formula formula;
     private final Bounds bounds;
     private BoolExpr expression;
+    private List<BoolExpr> extraConstraints;
+    private HashMap<Relation, SetSort> relationTypeMapping;
+    private Sort atomType;
+    private HashMap<Object, Symbol> atomToSymbolMappings;
+    private HashMap<Symbol, Object> symbolToAtomMappings;
+    private HashMap<Object. Integer> atomToIndexMappings;
+    private HashMap<Relation, Symbol> relationToSymbolMappings;
+    private HashMap<Symbol, Relation> symbolToRelationMappings;
+    private HashMap<Relation, TupleSort> relationToTupleTypeMappings;
+
+    int currentId = 0;
 
     public Z3Translator(Context context, Formula f, Bounds b) {
         this.context = context;
         this.formula = f;
         this.bounds = b;
+
+        this.extraConstraints = new LinkedList();
+        this.relationTypeMapping = new HashMap<Relation, SetSort>();
+        this.atomToSymbolMappings = new HashMap<Object, Symbol>();
+        this.symbolToAtomMappings = new HashMap<Symbol, Object>();
+        this.atomToIndexMappings = new HashMap<Object, Integer>();
+        this.relationToSymbolMappings = new HashMap<Relation, Symbol>();
+        this.symbolToRelationMappings = new HashMap<Symbol, Relation>();
+        this.relationToTupleTypeMappings = new HashMap<Symbol, Relation>();
     }
 
     public void generateTranslation() {
+        try {
+            // Generate symbols for each atom in the universe.
+            int atomIndex = 0;
+            for (Object o : bounds.universe()) {
+                Symbol s = context.MkSymbol("a" + getId());
+                atomToSymbolMappings.put(o, s);
+                symbolToAtomMappings.put(s, o);
+                atomToIndexMappings.put(o, atomIndex);
+                atomIndex += 1;
+            }
+            // Create an EnumSort to represent the atom data type.
+            atomType = context.MkEnumSort(context.MkSymbol("atom"),
+                                          (Symbol[])symbolToAtomMappings.keySet().toArray());
+
+            // Translate the bounds into actual sets in Z3 with lower and upper bounds.
+            for (Relation r : bounds.relations()) {
+                Symbol s = context.MkSymbol("r" + getId());
+                Symbol[] fieldNames = new Symbol[r.arity()];
+                Sort[] fieldTypes = new Sort[r.arity()];
+                for (int i = 0; i < r.arity(); i++) {
+                    fieldNames[i] = context.MkSymbol("f" + i);
+                    fieldTypes[i] = atomType;
+                }
+                TupleSort tupleType = context.MkTupleSort(s.toString() + "$type");
+                relationToSymbolMappings.put(r, s);
+                symbolToRelationMappings.put(s, r);
+                relationoTupleTypeMappings.put(r, tupleType);
+
+                BinExpr upperBoundsConstraint = null;
+                BinExpr lowerBoundsConstraint = null;
+                if (bounds.upperBound()) {
+                    for (Tuple t : bounds.upperBound()) {
+                        Expr[] fields = new Expr[t.arity()];
+                        for (Object o : t) {
+                            fields.
+                        }
+
+                    }
+                }
+
+                if (bounds.lowerBound()) {
+
+                }
+
+                BinExpr totalBoundsConstraint = null;
+                if (upperBoundsConstraint != null && lowerBoundsConstraint != null) {
+                    totalBoundsConstraint = context.MkAnd(new BinExpr[] {upperBoundsConstraint, lowerBoundsConstraint});
+                } else if (upperBoundsConstraint != null) {
+                    totalBoundsConstraint = upperBoundsConstraint;
+                } else if (lowerBoundsConstraint != null) {
+                    totalBoundsConstraint = lowerBoundsConstraint;
+                }
+
+                if (totalBoundsConstraint != null) {
+                    extraConstraints.add(totalBoundsConstraint);
+                }
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
         expression = formula.accept(this);
     }
 
@@ -70,7 +153,16 @@ public final class Z3Translator
     }
 
     public Expr visit(IfExpression ifExpr) {
-        throw new RuntimeException("Not Implemented Yet.");
+        BoolExpr condition = ifExpr.condition().accept(this);
+        Expr thenExpr = ifExpr.thenExpr().accept(this);
+        Expr elseExpr = ifExpr.elseExpr().accept(this);
+        Expr toReturn;
+        try {
+            toReturn = context.MkITE(condition, thenExpr, elseExpr);
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return toReturn;
     }
 
     public Expr visit(ProjectExpression project) {
@@ -321,5 +413,10 @@ public final class Z3Translator
 
     public BoolExpr visit(RelationPredicate predicate) {
         throw new RuntimeException("Not Implemented Yet.");
+    }
+
+    private int getId() {
+        currentId += 1;
+        return currentId - 1;
     }
 }
