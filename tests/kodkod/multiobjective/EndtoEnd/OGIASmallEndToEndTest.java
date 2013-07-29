@@ -17,7 +17,7 @@ import kodkod.multiobjective.algorithms.*;
 import kodkod.multiobjective.concurrency.*;
 
 @RunWith(JUnit4.class)
-public class PGIASmallEndToEndTest {
+public class OGIASmallEndToEndTest {
 	/*Fields*/
 	private MooProblem moo_problem;
 
@@ -33,9 +33,9 @@ public class PGIASmallEndToEndTest {
 	@Test
 	public void WithSymmetryBreaking() {
 		MultiObjectiveProblem problem = moo_problem.getProblem();
-		PartitionedGuidedImprovementAlgorithm pgia = new PartitionedGuidedImprovementAlgorithm("asdf", new MultiObjectiveOptions());
-		pgia.getOptions().setSolver(SATFactory.DefaultSAT4J);
-		pgia.getOptions().setSymmetryBreaking(1000);
+		OverlappingGuidedImprovementAlgorithm ogia = new OverlappingGuidedImprovementAlgorithm("asdf", new MultiObjectiveOptions());
+		ogia.getOptions().setSolver(SATFactory.DefaultSAT4J);
+		ogia.getOptions().setSymmetryBreaking(1000);
 
 		SolutionNotifier notifier = new SolutionNotifier() {
 			List<MeasuredSolution> solutions = new Vector<MeasuredSolution>();
@@ -47,7 +47,7 @@ public class PGIASmallEndToEndTest {
 			public void tell(Solution s, MetricPoint values) {
 				tell(new MeasuredSolution(s, values));
 			}
-
+ 
       public void exception(Throwable e) {
         throw new RuntimeException(e);
       }
@@ -67,15 +67,15 @@ public class PGIASmallEndToEndTest {
 			}
 		};
 
-		pgia.multiObjectiveSolve(problem, notifier);
+		ogia.multiObjectiveSolve(problem, notifier);
 	}
 
 	@Test
 	public void WithoutSymmetryBreaking() {
 		MultiObjectiveProblem problem = moo_problem.getProblem();
-		PartitionedGuidedImprovementAlgorithm pgia = new PartitionedGuidedImprovementAlgorithm("asdf", new MultiObjectiveOptions());
-		pgia.getOptions().setSolver(SATFactory.DefaultSAT4J);
-		pgia.getOptions().setSymmetryBreaking(0);
+		OverlappingGuidedImprovementAlgorithm ogia = new OverlappingGuidedImprovementAlgorithm("asdf", new MultiObjectiveOptions());
+		ogia.getOptions().setSolver(SATFactory.DefaultSAT4J);
+		ogia.getOptions().setSymmetryBreaking(0);
 
 		SolutionNotifier notifier = new SolutionNotifier() {
 			List<MeasuredSolution> solutions = new Vector<MeasuredSolution>();
@@ -87,7 +87,7 @@ public class PGIASmallEndToEndTest {
 			public void tell(Solution s, MetricPoint values) {
 				tell(new MeasuredSolution(s, values));
 			}
-
+ 
       public void exception(Throwable e) {
         throw new RuntimeException(e);
       }
@@ -110,6 +110,6 @@ public class PGIASmallEndToEndTest {
 			}
 		};
 
-		pgia.multiObjectiveSolve(problem, notifier);
+		ogia.multiObjectiveSolve(problem, notifier);
 	}
 }
