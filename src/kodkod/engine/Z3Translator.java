@@ -9,20 +9,32 @@ import kodkod.ast.operator.*;
 import kodkod.ast.visitor.ReturnVisitor;
 import kodkod.instance.Bounds;
 import kodkod.instance.Instance;
+import kodkod.instance.TupleSet;
+import kodkod.instance.Tuple;
 
 public final class Z3Translator 
-    implements ReturnVisitor<Expr, BoolExpr, Expr, IntExpr> {
+    implements ReturnVisitor<Z3Translator.ExprWithDomain, BoolExpr, Z3Translator.ExprWithDomain, IntExpr> {
     
+    public final class ExprWithDomain {
+        public ExprWithDomain(Expr expression, TupleSet domain) {
+            this.expr = expression;
+            this.domain = domain;
+        }
+
+        public final Expr expr;
+        public final TupleSet domain;
+    }
+
     private final Context context;
     private final Formula formula;
     private final Bounds bounds;
     private BoolExpr expression;
     private List<BoolExpr> extraConstraints;
     private HashMap<Relation, SetSort> relationTypeMapping;
-    private Sort atomType;
+    private EnumSort atomType;
     private HashMap<Object, Symbol> atomToSymbolMappings;
     private HashMap<Symbol, Object> symbolToAtomMappings;
-    private HashMap<Object. Integer> atomToIndexMappings;
+    private HashMap<Object, Integer> atomToIndexMappings;
     private HashMap<Relation, Symbol> relationToSymbolMappings;
     private HashMap<Symbol, Relation> symbolToRelationMappings;
     private HashMap<Relation, TupleSort> relationToTupleTypeMappings;
@@ -41,7 +53,7 @@ public final class Z3Translator
         this.atomToIndexMappings = new HashMap<Object, Integer>();
         this.relationToSymbolMappings = new HashMap<Relation, Symbol>();
         this.symbolToRelationMappings = new HashMap<Symbol, Relation>();
-        this.relationToTupleTypeMappings = new HashMap<Symbol, Relation>();
+        this.relationToTupleTypeMappings = new HashMap<Relation, TupleSort>();
     }
 
     public void generateTranslation() {
@@ -68,30 +80,45 @@ public final class Z3Translator
                     fieldNames[i] = context.MkSymbol("f" + i);
                     fieldTypes[i] = atomType;
                 }
-                TupleSort tupleType = context.MkTupleSort(s.toString() + "$type");
+                TupleSort tupleType = context.MkTupleSort(context.MkSymbol(s.toString() + "$type"), fieldNames, fieldTypes);
+                SetSort relationType = context.MkSetSort(tupleType);
                 relationToSymbolMappings.put(r, s);
                 symbolToRelationMappings.put(s, r);
-                relationoTupleTypeMappings.put(r, tupleType);
+                relationToTupleTypeMappings.put(r, tupleType);
 
-                BinExpr upperBoundsConstraint = null;
-                BinExpr lowerBoundsConstraint = null;
-                if (bounds.upperBound()) {
-                    for (Tuple t : bounds.upperBound()) {
+                BoolExpr upperBoundsConstraint = null;
+                BoolExpr lowerBoundsConstraint = null;
+                if (bounds.upperBound(r) != null) {
+                    Expr upperBoundDefinition = context.MkEmptySet(tupleType); 
+                    for (Tuple t : bounds.upperBound(r)) {
                         Expr[] fields = new Expr[t.arity()];
-                        for (Object o : t) {
-                            fields.
+                        for (int i = 0; i < t.arity(); i += 1) {
+                            Object o = t.atom(i);
+                            fields[i] = atomType.Consts()[atomToIndexMappings.get(o)];
                         }
-
+                        Expr createdTuple = context.MkApp(tupleType.MkDecl(), fields);
+                        upperBoundDefinition = context.MkSetAdd(upperBoundDefinition, createdTuple);
                     }
+                    upperBoundsConstraint = (BoolExpr)context.MkSetSubset(context.MkConst(s, relationType), upperBoundDefinition);
                 }
 
-                if (bounds.lowerBound()) {
-
+                if (bounds.lowerBound(r) != null) {
+                    Expr lowerBoundDefinition = context.MkEmptySet(tupleType);
+                    for (Tuple t : bounds.lowerBound(r)) {
+                        Expr[] fields = new Expr[t.arity()];
+                        for (int i = 0; i < t.arity(); i += 1) {
+                            Object o = t.atom(i);
+                            fields[i] = atomType.Consts()[atomToIndexMappings.get(o)];
+                        }
+                        Expr createdTuple = context.MkApp(tupleType.MkDecl(), fields);
+                        lowerBoundDefinition = context.MkSetAdd(lowerBoundDefinition, createdTuple);
+                    }
+                    lowerBoundsConstraint = (BoolExpr)context.MkSetSubset(context.MkConst(s, relationType), lowerBoundDefinition);
                 }
 
-                BinExpr totalBoundsConstraint = null;
+                BoolExpr totalBoundsConstraint = null;
                 if (upperBoundsConstraint != null && lowerBoundsConstraint != null) {
-                    totalBoundsConstraint = context.MkAnd(new BinExpr[] {upperBoundsConstraint, lowerBoundsConstraint});
+                    totalBoundsConstraint = context.MkAnd(new BoolExpr[] {upperBoundsConstraint, lowerBoundsConstraint});
                 } else if (upperBoundsConstraint != null) {
                     totalBoundsConstraint = upperBoundsConstraint;
                 } else if (lowerBoundsConstraint != null) {
@@ -106,6 +133,16 @@ public final class Z3Translator
             throw new RuntimeException(e);
         }
         expression = formula.accept(this);
+        try {
+            BoolExpr[] expressions = new BoolExpr[extraConstraints.size() + 1];
+            expressions[0] = expression;
+            for (int i = 1; i <= extraConstraints.size(); i += 1) {
+                expressions[i] = extraConstraints.get(i);
+            }
+            expression = context.MkAnd(expressions);
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public BoolExpr getTranslation() {
@@ -116,60 +153,63 @@ public final class Z3Translator
         return null;
     }
 
-    public Expr visit(Decls decls) {
+    public ExprWithDomain visit(Decls decls) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(Decl decl) {
+    public ExprWithDomain visit(Decl decl) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(Relation relation) {
+    public ExprWithDomain visit(Relation relation) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(Variable variable) {
+    public ExprWithDomain visit(Variable variable) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(ConstantExpression constExpr) {
+    public ExprWithDomain visit(ConstantExpression constExpr) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(UnaryExpression unaryExpr) {
+    public ExprWithDomain visit(UnaryExpression unaryExpr) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(BinaryExpression binExpr) {
+    public ExprWithDomain visit(BinaryExpression binExpr) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(NaryExpression expr) {
+    public ExprWithDomain visit(NaryExpression expr) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(Comprehension comprehension) {
+    public ExprWithDomain visit(Comprehension comprehension) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(IfExpression ifExpr) {
+    public ExprWithDomain visit(IfExpression ifExpr) {
         BoolExpr condition = ifExpr.condition().accept(this);
-        Expr thenExpr = ifExpr.thenExpr().accept(this);
-        Expr elseExpr = ifExpr.elseExpr().accept(this);
-        Expr toReturn;
+        ExprWithDomain thenExpr = ifExpr.thenExpr().accept(this);
+        ExprWithDomain elseExpr = ifExpr.elseExpr().accept(this);
+        Expr toReturnExpr;
         try {
-            toReturn = context.MkITE(condition, thenExpr, elseExpr);
+            toReturnExpr = context.MkITE(condition, thenExpr.expr, elseExpr.expr);
         } catch (Z3Exception e) {
             throw new RuntimeException(e);
         }
-        return toReturn;
+        TupleSet toReturnDomain = thenExpr.domain.clone();
+        toReturnDomain.addAll(elseExpr.domain);
+
+        return new ExprWithDomain(toReturnExpr, toReturnDomain);
     }
 
-    public Expr visit(ProjectExpression project) {
+    public ExprWithDomain visit(ProjectExpression project) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
-    public Expr visit(IntToExprCast castExpr) {
+    public ExprWithDomain visit(IntToExprCast castExpr) {
         throw new RuntimeException("Not Implemented Yet.");
     }
 
