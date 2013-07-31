@@ -4,6 +4,7 @@ import com.microsoft.z3.*;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.HashMap;
+import java.util.ArrayList;
 import kodkod.ast.*;
 import kodkod.ast.operator.*;
 import kodkod.ast.visitor.ReturnVisitor;
@@ -16,7 +17,7 @@ import kodkod.util.ints.IndexedEntry;
 import kodkod.util.ints.SparseSequence;
 
 public final class Z3Translator 
-    implements ReturnVisitor<Z3Translator.ExprWithDomain, BoolExpr, Z3Translator.ExprWithDomain, IntExpr> {
+    implements ReturnVisitor<Z3Translator.ExprWithDomain, BoolExpr, List<Z3Translator.TypedVariableWithConstraint>, IntExpr> {
     
     public final class ExprWithDomain {
         public ExprWithDomain(Expr expression, TupleSet domain) {
@@ -25,6 +26,20 @@ public final class Z3Translator
         }
 
         public final Expr expr;
+        public final TupleSet domain;
+    }
+
+    public final class TypedVariableWithConstraint {
+        public TypedVariableWithConstraint(Symbol variableName, Sort type, BoolExpr constraint, TupleSet domain) {
+            this.variableName = variableName;
+            this.type = type;
+            this.constraint = constraint;
+            this.domain = domain;
+        }
+
+        public final Symbol variableName;
+        public final Sort type;
+        public final BoolExpr constraint;
         public final TupleSet domain;
     }
 
@@ -45,7 +60,7 @@ public final class Z3Translator
     private ArrayExpr intToExprLookupArray;
     private TupleSet intToExprRange;
 
-    int currentId = 0;
+    private int currentId = 0;
 
     private TupleSort tupleTypeForArity(int arity) {
         TupleSort sort = arityToTupleType.get(arity);
@@ -221,12 +236,67 @@ public final class Z3Translator
         return null;
     }
 
-    public ExprWithDomain visit(Decls decls) {
-        throw new RuntimeException("Not Implemented Yet.");
+    public List<TypedVariableWithConstraint> visit(Decls decls) {
+        List<TypedVariableWithConstraint> toReturn = new ArrayList<TypedVariableWithConstraint>(decls.size());
+        for(int i = 0; i < decls.size(); i += 1) {
+            toReturn.addAll(decls.get(i).accept(this));
+        }
+        return toReturn;
     }
 
-    public ExprWithDomain visit(Decl decl) {
-        throw new RuntimeException("Not Implemented Yet.");
+    public List<TypedVariableWithConstraint> visit(Decl decl) {
+        List<TypedVariableWithConstraint> toReturn = new ArrayList<TypedVariableWithConstraint>(1);
+        Symbol variableName = null;
+        BoolExpr constraint = null;
+        Sort sort = null;
+        TupleSet domain = null;
+
+        ExprWithDomain expr = decl.expression().accept(this);
+
+        domain = expr.domain;
+        sort = setTypeForArity(decl.variable().arity());
+
+        try {
+            variableName = context.MkSymbol("var$" + decl.variable().name());
+            Expr variableConstant = context.MkConst(variableName, sort);
+            switch(decl.multiplicity()) {
+                case SET:
+                    throw new RuntimeException("Not Implemented Yet.");
+                case SOME:
+                    throw new RuntimeException("Not Implemented Yet.");
+                case ONE:
+                    Symbol tempVar = context.MkSymbol("tv" + getId());
+                    Expr tempVarConst = context.MkConst(tempVar, tupleTypeForArity(decl.variable().arity()));
+                    // Variable is a subset of the expression.
+                    constraint = (BoolExpr)context.MkSetSubset(expr.expr, variableConstant);
+                    // Variable only has one element.
+                    BoolExpr cardinalityConstraint = context.MkExists(
+                        new Expr[] {tempVarConst},
+                        context.MkAnd(new BoolExpr[] {
+                            (BoolExpr)context.MkSetMembership(tempVarConst, variableConstant),
+                            context.MkEq(
+                                context.MkEmptySet(tupleTypeForArity(decl.variable().arity())),
+                                context.MkSetDel(variableConstant, tempVarConst)
+                            )
+                        }),
+                        0,
+                        null,
+                        null,
+                        null,
+                        null
+                    );
+                    constraint = context.MkAnd(new BoolExpr[] {constraint, cardinalityConstraint});
+                    break;
+                case LONE:
+                    throw new RuntimeException("Not Implemented Yet.");
+                default:
+                    throw new RuntimeException("Unsupported Multiplicity: " + decl.multiplicity());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        toReturn.add(new TypedVariableWithConstraint(variableName, sort, constraint, domain));
+        return toReturn;
     }
 
     public ExprWithDomain visit(Relation relation) {
@@ -587,6 +657,15 @@ public final class Z3Translator
     }
 
     public BoolExpr visit(QuantifiedFormula quantFormula) {
+        quantFormula.decls().accept(this);
+
+        System.out.println(quantFormula);
+        System.out.println("Quantifier: ");
+        System.out.println(quantFormula.quantifier());
+        System.out.println("Decls: ");
+        System.out.println(quantFormula.decls());
+        System.out.println("Formula: ");
+        System.out.println(quantFormula.formula());
         throw new RuntimeException("Not Implemented Yet.");
     }
 
