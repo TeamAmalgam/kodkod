@@ -29,8 +29,9 @@ import kodkod.util.ints.IntIterator;
 import kodkod.util.ints.IntSet;
 
 
-public class Recompute {
+class Recompute {
 
+	// TODO: make these not static
 	static HashSet<String> bogusVariables = new HashSet<String>();
 	static Map<Relation, TupleSet> relationTuples;
 	static HashSet<ComparisonFormula> formulas;
