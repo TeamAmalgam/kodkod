@@ -1,7 +1,7 @@
 package kodkod.intelision;
 
-public class TemporaryTuple {
-	Object left;
+class TemporaryTuple {
+	final Object left;
 	int right;
 	
 	public TemporaryTuple(Object left, int right)
