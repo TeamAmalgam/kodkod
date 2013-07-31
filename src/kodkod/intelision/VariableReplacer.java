@@ -33,9 +33,9 @@ import kodkod.ast.UnaryIntExpression;
 import kodkod.ast.Variable;
 import kodkod.ast.visitor.ReturnVisitor;
 
-public class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
+class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 
-	 Expression variable;
+	private final Expression variable;
 
 	public VariableReplacer(Expression v){
 		variable = v;
@@ -96,7 +96,7 @@ public class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 		return null;
 	}
 
-	public  Node visit(BinaryExpression f) {
+	public  Node visit(final BinaryExpression f) {
 		if(f.left() instanceof Variable)
 		{
 			//return new BinaryExpression(variable, f.op(), f.right());
