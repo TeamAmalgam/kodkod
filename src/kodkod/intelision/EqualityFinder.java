@@ -23,7 +23,6 @@ class EqualityFinder extends AbstractVoidVisitor {
 	final IdentityHashSet<IntComparisonFormula> intComparisonNodes = new IdentityHashSet<IntComparisonFormula>();
 	
 	
-	private String quantVariable; // TODO: is this used?
 	private Expression quantExpression;
 	private String multiplicity; 
 	
@@ -74,7 +73,6 @@ class EqualityFinder extends AbstractVoidVisitor {
 	
 	public void visit(final ComparisonFormula f)
 	{
-		// TODO: why are we throwing away the return values?
 		f.left().accept(this);
 		f.right().accept(this);
 		if(f.op() == ExprCompOperator.EQUALS && (f.left() instanceof IntToExprCast || f.right() instanceof IntToExprCast)){
@@ -129,7 +127,6 @@ class EqualityFinder extends AbstractVoidVisitor {
 	
 	public void visit(IntComparisonFormula f)
 	{
-		// TODO: why are we throwing away the return values?
 		f.left().accept(this);
 		f.right().accept(this);
 		intComparisonNodes.add(f);
@@ -140,12 +137,9 @@ class EqualityFinder extends AbstractVoidVisitor {
 		final Decls decls = f.decls();
 		final Decl d = decls.get(0);
 		multiplicity = d.multiplicity().toString();
-		quantVariable = d.variable().toString();
 		quantExpression = d.expression();
-		// TODO: why are we throwing away the return value?
 		f.formula().accept(this);
 		multiplicity = null;
-		quantVariable = null;
 		quantExpression = null;
 	}
 	
