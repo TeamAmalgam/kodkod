@@ -12,6 +12,8 @@ import kodkod.instance.Instance;
 import kodkod.instance.TupleSet;
 import kodkod.instance.Tuple;
 import kodkod.instance.TupleFactory;
+import kodkod.util.ints.IndexedEntry;
+import kodkod.util.ints.SparseSequence;
 
 public final class Z3Translator 
     implements ReturnVisitor<Z3Translator.ExprWithDomain, BoolExpr, Z3Translator.ExprWithDomain, IntExpr> {
@@ -40,6 +42,8 @@ public final class Z3Translator
     private HashMap<Symbol, Relation> symbolToRelationMappings;
     private HashMap<Integer, TupleSort> arityToTupleType;
     private HashMap<Integer, SetSort> arityToSetType;
+    private ArrayExpr intToExprLookupArray;
+    private TupleSet intToExprRange;
 
     int currentId = 0;
 
@@ -95,10 +99,12 @@ public final class Z3Translator
     public void generateTranslation() {
         System.out.println("Generating translation for:");
         System.out.println(formula);
+
+        TupleFactory factory = bounds.universe().factory();
         try {
             // Generate symbols for each atom in the universe.
             int atomIndex = 0;
-            Symbol[] atomSymbols = new Symbol[bounds.universe().size()];
+            Symbol[] atomSymbols = new Symbol[bounds.universe().size() + 1];
             for (Object o : bounds.universe()) {
                 Symbol s = context.MkSymbol("a" + getId());
                 atomToSymbolMappings.put(o, s);
@@ -107,6 +113,7 @@ public final class Z3Translator
                 atomSymbols[atomIndex] = s;
                 atomIndex += 1;
             }
+            atomSymbols[atomSymbols.length - 1] = context.MkSymbol("null-atom");
             // Create an EnumSort to represent the atom data type.
             atomType = context.MkEnumSort(context.MkSymbol("atom"), atomSymbols);
 
@@ -150,9 +157,49 @@ public final class Z3Translator
                     extraConstraints.add(lowerBoundsConstraint);
                 }
             }
+
+            // Create a lookup formula for the int to expression casts.
+            SparseSequence<TupleSet> intBounds = bounds.intBounds();
+            // Map all entries in the table to the null tuple initially.
+            ArrayExpr lookupTable = context.MkConstArray(
+                context.IntSort(),
+                context.MkSetAdd(
+                    context.MkEmptySet(tupleTypeForArity(1)),
+                    context.MkApp(tupleTypeForArity(1).MkDecl(), new Expr[] {atomType.Consts()[atomType.Consts().length - 1]})
+                )
+            );
+            // Map bound integers to a corresponding tuple.
+            for (IndexedEntry<TupleSet> entry : intBounds) {
+                Tuple tupleToStore = null;
+                for (Tuple t : entry.value()) {
+                    tupleToStore = t;
+                }
+                if (intToExprRange == null) {
+                    intToExprRange = factory.setOf(tupleToStore);
+                } else {
+                    intToExprRange.add(tupleToStore);
+                }
+                Expr result = context.MkSetAdd(
+                    context.MkEmptySet(tupleTypeForArity(1)),
+                    context.MkApp(
+                        tupleTypeForArity(1).MkDecl(),
+                        atomType.Consts()[atomToIndexMappings.get(tupleToStore.atom(0))]
+                    )
+                );
+                lookupTable = context.MkStore(lookupTable,
+                    context.MkInt(entry.index()),
+                    result
+                );
+            }
+            ArrayExpr intToExprLookupArrayConst = context.MkArrayConst("i-to-e", context.IntSort(), setTypeForArity(1));
+            extraConstraints.add(
+                context.MkEq(intToExprLookupArrayConst, lookupTable)
+            );
+            intToExprLookupArray = intToExprLookupArrayConst;
         } catch (Z3Exception e) {
             throw new RuntimeException(e);
         }
+
         expression = formula.accept(this);
         try {
             BoolExpr[] expressions = new BoolExpr[extraConstraints.size() + 1];
@@ -251,10 +298,7 @@ public final class Z3Translator
                     }
 
                     // Iterate over all left tuples and add the join to the new domain.
-                    System.out.println("Left Arity: " + left.domain.arity());
-                    System.out.println("Right Arity: " + right.domain.arity());
                     Object[] values = new Object[left.domain.arity() + right.domain.arity() - 2];
-                    System.out.println("Size of values array: " + values.length);
                     for (Tuple leftTuple : left.domain) {
                         Object joinColumnValue = leftTuple.atom(leftTuple.arity() - 1);
                         TupleSet joinTableSet = joinTable.get(joinColumnValue);
@@ -264,7 +308,6 @@ public final class Z3Translator
                             }
                             for (Tuple rightTuple : joinTableSet) {
                                 for (int i = 1; i < rightTuple.arity(); i += 1) {
-                                    System.out.println("Writing to " + i);
                                     values[(i -  1) + (leftTuple.arity() - 1)] = rightTuple.atom(i);
                                 }
                                 Tuple newTuple = factory.tuple(values);
@@ -287,7 +330,7 @@ public final class Z3Translator
                     // Add the join constraints to additional constraints.
                     //      forall a, b : (a in left) and (b in right) and (a[n-1] == b[0])
                     //                       <=> (a[0..n-2] * b[1..n-1] in result)
-                    
+
                     Symbol leftTupleSymbol = context.MkSymbol("lt" + getId());
                     TupleSort leftTupleSort = tupleTypeForArity(left.domain.arity());
                     Expr leftTupleConst = context.MkConst(leftTupleSymbol, leftTupleSort);
@@ -368,7 +411,24 @@ public final class Z3Translator
     }
 
     public ExprWithDomain visit(IntToExprCast castExpr) {
-        throw new RuntimeException("Not Implemented Yet.");
+        IntExpr innerExpr = castExpr.intExpr().accept(this);
+        Expr exprToReturn = null;
+        TupleSet domainToReturn = null;
+        try {
+            switch(castExpr.op()) {
+                case INTCAST:
+                    exprToReturn = context.MkSelect(intToExprLookupArray, innerExpr);
+                    domainToReturn = intToExprRange;
+                    break;
+                case BITSETCAST:
+                    throw new RuntimeException("Not Implemented Yet.");
+                default:
+                    throw new RuntimeException("Unknown IntCastOperator: " + castExpr.op());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+        return new ExprWithDomain(exprToReturn, domainToReturn);
     }
 
     public IntExpr visit(IntConstant intConst) {
