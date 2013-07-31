@@ -664,14 +664,22 @@ public final class Z3Translator
     public BoolExpr visit(ComparisonFormula compFormula) {
         ExprWithDomain left = compFormula.left().accept(this);
         ExprWithDomain right = compFormula.right().accept(this);
-        switch(compFormula.op()) {
-            case SUBSET:
-                throw new RuntimeException("Not implemented yet.");
-            case EQUALS:
-                throw new RuntimeException("Not implemented yet.");
-            default:
-                throw new RuntimeException("Unknown ExprCompOperator: " + compFormula.op());
+        BoolExpr toReturn = null;
+        try {
+            switch(compFormula.op()) {
+                case SUBSET:
+                    toReturn = (BoolExpr)context.MkSetSubset(left.expr, right.expr);
+                    break;
+                case EQUALS:
+                    toReturn = context.MkEq(left.expr, right.expr);
+                    break;
+                default:
+                    throw new RuntimeException("Unknown ExprCompOperator: " + compFormula.op());
+            }
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
         }
+        return toReturn;
     }
 
     public BoolExpr visit(MultiplicityFormula multFormula) {
