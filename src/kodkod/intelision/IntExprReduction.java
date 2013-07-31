@@ -56,7 +56,7 @@ public final class IntExprReduction {
 	
 	//adds AST node to proper reductions set, making sure to remove it from any others first
 	//the removal checks can be deleted eventually
-	void addReduction(Node n, IdentityHashSet<Node> set){
+	private void addReduction(Node n, IdentityHashSet<Node> set){
 		reductions_delete.remove(n);
 		reductions_replace.remove(n);
 		reductions_swapVariables.remove(n);
@@ -78,18 +78,18 @@ public final class IntExprReduction {
 		createNewTree = new boolean[formulas.length];
 		for(int i = 0; i < formulas.length; i++) 
 		{
-			Formula f = formulas[i];
-			EqualityFinder equalityFinder = new EqualityFinder();
+			final Formula f = formulas[i];
+			final EqualityFinder equalityFinder = new EqualityFinder();
 			f.accept(equalityFinder);
-			IdentityHashSet<ComparisonFormula> currentComparisonNodes = equalityFinder.comparisonNodes;
-			IdentityHashSet<IntComparisonFormula> currentInequalityNodes = equalityFinder.intComparisonNodes;
+			final IdentityHashSet<ComparisonFormula> currentComparisonNodes = equalityFinder.comparisonNodes;
+			final IdentityHashSet<IntComparisonFormula> currentInequalityNodes = equalityFinder.intComparisonNodes;
 			createNewTree[i] = !(currentComparisonNodes.isEmpty() && currentInequalityNodes.isEmpty());
 			comparisonNodes.addAll(currentComparisonNodes);
 			intComparisonNodes.addAll(currentInequalityNodes);
 		}
-		for(ComparisonFormula cf : comparisonNodes){
+		for(final ComparisonFormula cf : comparisonNodes){
 			//the "independent side" of the comparison formula
-			Expression arithmetic_expression;
+			final Expression arithmetic_expression;
 			if(cf.right() instanceof BinaryExpression || cf.right() instanceof Relation){
 				arithmetic_expression = cf.left();
 			}
@@ -123,20 +123,19 @@ public final class IntExprReduction {
 			bogusVariables.add(answers.get(cf));
 			
 		}
-		for(IntComparisonFormula icf : intComparisonNodes){
+		for(final IntComparisonFormula icf : intComparisonNodes){
 			//icf.reduction = Reduction.INTCOMPARISON;
 			addReduction(icf, reductions_intComparison);
 		}
-		int count = 0;
 
 		
 		
 		for(int i = 0; i < formulas.length; i++)
 			if(createNewTree[i]){
-				Formula f = formulas[i];
+				final Formula f = formulas[i];
 				
 				//ArithmeticStorageElider bt = new ArithmeticStorageElider(f, swapAnswerPairs);
-				ArithmeticStorageElider elider = new ArithmeticStorageElider(swapAnswerPairs);
+				final ArithmeticStorageElider elider = new ArithmeticStorageElider(swapAnswerPairs);
 				modifiedTree = (Formula)f.accept(elider);
 				//if(!f.toString().equals(newTree.toString()))
 				//	System.out.print("count"+count);
