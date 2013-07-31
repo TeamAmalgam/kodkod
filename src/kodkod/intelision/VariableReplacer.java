@@ -11,6 +11,7 @@ import kodkod.ast.Decl;
 import kodkod.ast.Decls;
 import kodkod.ast.ExprToIntCast;
 import kodkod.ast.Expression;
+import kodkod.ast.Formula;
 import kodkod.ast.IfExpression;
 import kodkod.ast.IfIntExpression;
 import kodkod.ast.IntComparisonFormula;
@@ -86,9 +87,13 @@ class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 		return f;
 	}
 
-	public  Node visit(NaryFormula f) {
-		// TODO Auto-generated method stub
-		return null;
+	public  Node visit(NaryFormula formula) {
+		if(formula.size() == 0)
+			return null;
+		Formula builtFormula = (Formula)formula.child(0).accept(this);
+		for(int i = 1; i < formula.size(); i++)
+			builtFormula = builtFormula.compose(formula.op(), (Formula)formula.child(i).accept(this));
+		return builtFormula;
 	}
 
 	public  Node visit(NotFormula f) {
