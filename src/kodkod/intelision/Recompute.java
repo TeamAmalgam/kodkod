@@ -140,7 +140,7 @@ public class Recompute {
 			tempTuples.add(temps);
 		}
 		boundTemporaryTuplesToBitwidth(tempTuples);
-		System.out.println("TEMP" + tempTuples);
+		//System.out.println("TEMP" + tempTuples);
 		return computeNewSolution(sol, tempTuples);
 	}
 	/*
@@ -249,7 +249,7 @@ public class Recompute {
 					newUniverseList.add(t.right()+"");
 		
 		Universe newUniverse = new Universe(newUniverseList);
-		System.out.println("B" + newUniverse);
+		//System.out.println("B" + newUniverse);
 		Instance newInstance = new Instance(newUniverse);
 		Set<Relation> keys =  relationTuples.keySet();
 		Iterator<Relation> itr2 = keys.iterator();
@@ -313,18 +313,19 @@ public class Recompute {
 		IntIterator intitr = set.iterator();
 		while(intitr.hasNext()){
 			//TupleFactory factory = newUniverse.factory();
-			System.out.println("in");
+			//System.out.println("in");
 			int i = intitr.next();
 			b.boundExactly(i, newUniverse.factory().range(newUniverse.factory().tuple(i+"" ),newUniverse.factory().tuple( i+"" )));
 		}	
 		
 		for(String s: newInts){
-			System.out.println("in");
+			//System.out.println("in");
 			//TupleFactory factory = newUniverse.factory();
 			b.boundExactly(Integer.parseInt(s), newUniverse.factory().range(newUniverse.factory().tuple(s),newUniverse.factory().tuple( s)));
 		}
 		//newInstance.ints = b.intBounds();
-
+		//Instance lastInstance = new Instance(lastUniverse, newInstance.tuples, b.intBounds());
+		//Instance lastInstance2 = new Instance(lastUniverse);
 		for(IndexedEntry<TupleSet> t : b.intBounds()){
 			newInstance.add(t.index(), t.value());//lastInstance2.add(t.index(), t.value());
 		}
