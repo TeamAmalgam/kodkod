@@ -1,6 +1,7 @@
 package kodkod.intelision;
 
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Map;
 
 import kodkod.ast.BinaryExpression;
 import kodkod.ast.BinaryFormula;
@@ -38,24 +39,22 @@ import kodkod.ast.operator.ExprCastOperator;
 import kodkod.ast.visitor.ReturnVisitor;
 
 public class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
-	public enum Replace{
+	private enum Replace{
 		FALSE,
 		COMPARISON,
 		INTCOMPARISON,
 		VARIABLES
 	};
-	Node node;
-	//  Variable variable = null;
-	  Replace replace = Replace.FALSE;
-	  HashMap<String, Expression> swapAnswerPairs;
+	private Replace replace = Replace.FALSE;
+	private final Map<String, Expression> swapAnswerPairs;
 	
 	public Variable quantVariable=null;
 	public String quantExpression="";
 	public String multiplicity=""; 
 	
-	public ArithmeticStorageElider(HashMap<String, Expression> swapAnswerPairs)
+	public ArithmeticStorageElider(Map<String, Expression> swapAnswerPairs)
 	{
-		this.swapAnswerPairs = swapAnswerPairs;
+		this.swapAnswerPairs = Collections.unmodifiableMap(swapAnswerPairs);
 	}
 	
 	//*************************************************
@@ -79,11 +78,11 @@ public class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Nod
 		}
 
 		
-		public Expression visit(Relation relation) {
-			String answer =relation.toString();
+		public Expression visit(final Relation relation) {
+			final String answer =relation.toString();
 			if(swapAnswerPairs.containsKey(answer))
 			{
-				Expression e  = swapAnswerPairs.get(answer);//((Relation)binExpr.right()).name());
+				final Expression e  = swapAnswerPairs.get(answer);//((Relation)binExpr.right()).name());
 				if(e instanceof IntToExprCast){
 					if(replace == Replace.INTCOMPARISON){
 						
@@ -119,15 +118,15 @@ public class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Nod
 		}
 
 		
-		public Node visit(BinaryExpression binExpr) {
-			String answer = EqualityFinder.myToString(binExpr, multiplicity, quantExpression);
+		public Node visit(final BinaryExpression binExpr) {
+			final String answer = EqualityFinder.myToString(binExpr, multiplicity, quantExpression);
 			if(swapAnswerPairs.containsKey(answer))
 			{
-				Expression e  = swapAnswerPairs.get(answer);//((Relation)binExpr.right()).name());
+				final Expression e  = swapAnswerPairs.get(answer);//((Relation)binExpr.right()).name());
 				if(e instanceof IntToExprCast){
 					if(replace == Replace.INTCOMPARISON){
 						
-						IntExpression i =(IntExpression) ((IntToExprCast)e).intExpr();
+						final IntExpression i =(IntExpression) ((IntToExprCast)e).intExpr();
 						if(quantVariable != null)
 							return (IntExpression)i.accept(new VariableReplacer(quantVariable));// binExpr.left());
 					}
@@ -186,12 +185,12 @@ public class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Nod
 		}
 
 		
-		public IntExpression visit(ExprToIntCast intExpr) {
+		public IntExpression visit(final ExprToIntCast intExpr) {
 			if(replace == Replace.FALSE || intExpr.op() == ExprCastOperator.CARDINALITY)
 				return intExpr;
 			else
 			{
-				Node n = intExpr.expression().accept(this);
+				final Node n = intExpr.expression().accept(this);
 				if(n instanceof IntExpression)
 					return (IntExpression)n;
 				else
@@ -279,8 +278,7 @@ public class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Nod
 		}
 
 		
-		public Formula visit(ComparisonFormula n) {
-			Formula newFormula;
+		public Formula visit(final ComparisonFormula n) {
 			//if(n.reduction == Reduction.DELETE){ //|| n.reduction == Reduction.INTCONSTANT){
 			if(IntExprReduction.reductions_delete.contains(n)){
 				return Formula.constant(true);
@@ -291,7 +289,7 @@ public class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Nod
 			}
 			//else if(n.reduction == Reduction.EQUALEXPRESSIONS){
 			else if(IntExprReduction.reductions_equalExpressions.contains(n)){
-				ComparisonFormula tempForm = (ComparisonFormula)n;
+				final ComparisonFormula tempForm = (ComparisonFormula)n;
 				//return new ComparisonFormula(tempForm.right(), tempForm.op(), tempForm.equalExpression);
 				return tempForm.right().compare(tempForm.op(), IntExprReduction.equalExpressions.get(tempForm));  
 			}
@@ -299,14 +297,15 @@ public class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Nod
 			else if(IntExprReduction.reductions_comparison.contains(n)){
 				replace = Replace.COMPARISON;
 				//newFormula = new ComparisonFormula((Expression)n.left().accept(this), n.op(), (Expression)n.right());
-				newFormula = ((Expression)n.left().accept(this)).compare(
+				final Formula newFormula = ((Expression)n.left().accept(this)).compare(
 						n.op(),
 						(Expression)n.right());
 				replace = Replace.FALSE;
+				return newFormula;
 			}
-			else
-				newFormula = n;
-			return newFormula;
+			else {
+				return n;
+			}
 		}
 
 		
