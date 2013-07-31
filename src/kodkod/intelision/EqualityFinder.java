@@ -3,44 +3,26 @@ package kodkod.intelision;
 import java.util.HashSet;
 
 import kodkod.ast.BinaryExpression;
-import kodkod.ast.BinaryFormula;
-import kodkod.ast.BinaryIntExpression;
 import kodkod.ast.ComparisonFormula;
-import kodkod.ast.Comprehension;
-import kodkod.ast.ConstantExpression;
-import kodkod.ast.ConstantFormula;
 import kodkod.ast.Decl;
 import kodkod.ast.Decls;
 import kodkod.ast.ExprToIntCast;
 import kodkod.ast.Expression;
-import kodkod.ast.IfExpression;
-import kodkod.ast.IfIntExpression;
 import kodkod.ast.IntComparisonFormula;
-import kodkod.ast.IntConstant;
 import kodkod.ast.IntToExprCast;
-import kodkod.ast.MultiplicityFormula;
-import kodkod.ast.NaryExpression;
-import kodkod.ast.NaryFormula;
-import kodkod.ast.NaryIntExpression;
 import kodkod.ast.Node;
-import kodkod.ast.NotFormula;
-import kodkod.ast.ProjectExpression;
 import kodkod.ast.QuantifiedFormula;
 import kodkod.ast.Relation;
-import kodkod.ast.RelationPredicate;
-import kodkod.ast.SumExpression;
-import kodkod.ast.UnaryExpression;
-import kodkod.ast.UnaryIntExpression;
-import kodkod.ast.Variable;
 import kodkod.ast.operator.ExprCastOperator;
 import kodkod.ast.operator.ExprCompOperator;
 import kodkod.ast.visitor.AbstractVoidVisitor;
+import kodkod.util.collections.IdentityHashSet;
 
 //Traverses the tree marking equality and inequality nodes 
 public class EqualityFinder extends AbstractVoidVisitor {
 
-	public HashSet<ComparisonFormula> comparisonNodes = new HashSet<ComparisonFormula>();
-	public HashSet<IntComparisonFormula> intComparisonNodes = new HashSet<IntComparisonFormula>();
+	public IdentityHashSet<ComparisonFormula> comparisonNodes = new IdentityHashSet<ComparisonFormula>();
+	public IdentityHashSet<IntComparisonFormula> intComparisonNodes = new IdentityHashSet<IntComparisonFormula>();
 	
 	
 	public String quantVariable;
@@ -51,8 +33,8 @@ public class EqualityFinder extends AbstractVoidVisitor {
 	
 	public EqualityFinder()
 	{
-		comparisonNodes = new HashSet<ComparisonFormula>();
-		intComparisonNodes = new HashSet<IntComparisonFormula>();
+		comparisonNodes = new IdentityHashSet<ComparisonFormula>();
+		intComparisonNodes = new IdentityHashSet<IntComparisonFormula>();
 	}
 	/*
 	public static void callByType(Object f)
@@ -100,35 +82,55 @@ public class EqualityFinder extends AbstractVoidVisitor {
 	{
 		f.left().accept(this);
 		f.right().accept(this);
-		if(f.op() == ExprCompOperator.EQUALS && (f.left().isIntExpr || f.right().isIntExpr)){
+		if(f.op() == ExprCompOperator.EQUALS && (f.left() instanceof IntToExprCast || f.right() instanceof IntToExprCast)){
 			
 			
 			if(f.left() instanceof BinaryExpression || f.left() instanceof Relation){ // && ((BinaryExpression)f.left()).right() instanceof Relation)
 				comparisonNodes.add(f);
-				f.variable = (Relation)quantExpression;
+				//f.variable = (Relation)quantExpression;
+				IntExprReduction.variables.put(f, quantExpression);
 				//System.out.println(f.variable);
 				if(f.left() instanceof Relation)
-					f.answer = f.left().toString();
+					//f.answer = f.left().toString();
+					IntExprReduction.answers.put(f, f.left().toString());
 				else if(multiplicity != null)
-					f.answer = (((BinaryExpression)f.left()).myToString(multiplicity.toString(), quantExpression.toString()));
+					//f.answer = myToString((BinaryExpression)f.left(), multiplicity.toString(), quantExpression.toString());
+					IntExprReduction.answers.put(f, 
+							myToString((BinaryExpression)f.left(), multiplicity.toString(), quantExpression.toString()));
 				else 
-					f.answer = (((BinaryExpression)f.left()).myToString("",""));
-					
+					//f.answer = myToString((BinaryExpression)f.left(), "","");
+					IntExprReduction.answers.put(f, myToString((BinaryExpression)f.left(), "",""));
 			}
 			else if(f.right() instanceof BinaryExpression  || f.right() instanceof Relation){
-				f.assignmentOnLeft = false;
-				f.variable = (Relation)quantExpression;
+				//f.variable = (Relation)quantExpression;
+				IntExprReduction.variables.put(f, quantExpression);
 				comparisonNodes.add(f);
 				if(f.right() instanceof Relation)
-					f.answer = f.right().toString();
+					//f.answer = f.right().toString();
+					IntExprReduction.answers.put(f, f.right().toString());
 				else if(multiplicity != null)
-					f.answer = (((BinaryExpression)f.right()).myToString(multiplicity.toString(), quantExpression.toString()));
+					//f.answer = myToString((BinaryExpression)f.right(), multiplicity.toString(), quantExpression.toString());
+					IntExprReduction.answers.put(f, myToString((BinaryExpression)f.right(), multiplicity.toString(), quantExpression.toString()));
 				else 
-					f.answer = (((BinaryExpression)f.right()).myToString("",""));
+					//f.answer = myToString((BinaryExpression)f.right(), "","");
+					IntExprReduction.answers.put(f, myToString((BinaryExpression)f.right(), "",""));
 			}
 				
 		}
 	}
+
+	// TODO: rewrite this myToString() method
+	static String myToString(final BinaryExpression be, final String mult, final String expression){
+		if(be.right() instanceof BinaryExpression)
+			return myToString(((BinaryExpression)be.right()), mult,expression);
+		else if(be.right() instanceof Relation)
+			return be.right().toString();
+		else 
+			System.exit(1); // TODO: remove this call
+		return "";
+	}
+	
+
 	
 	public void visit(IntComparisonFormula f)
 	{
@@ -151,7 +153,6 @@ public class EqualityFinder extends AbstractVoidVisitor {
 	}
 	
 	public void visit(IntToExprCast castExpr) {
-		castExpr.isIntExpr = true;
 		castExpr.intExpr().accept(this);
 	}
 	

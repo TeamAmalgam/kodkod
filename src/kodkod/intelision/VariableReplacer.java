@@ -63,11 +63,13 @@ public class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 	}
 
 	public  Node visit(IntToExprCast f) {
-		return new IntToExprCast((IntExpression)f.intExpr().accept(this),f.op());
+		//return new IntToExprCast((IntExpression)f.intExpr().accept(this),f.op());
+		return ((IntExpression)f.intExpr().accept(this)).cast(f.op());
 	}
 
 	public  Node visit(ExprToIntCast f) {
-		return new ExprToIntCast((Expression) f.expression().accept(this), f.op());
+		//return new ExprToIntCast((Expression) f.expression().accept(this), f.op());
+		return ((Expression) f.expression().accept(this)).apply(f.op());
 	}
 
 	public  Node visit(Variable f) {
@@ -97,12 +99,16 @@ public class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 	public  Node visit(BinaryExpression f) {
 		if(f.left() instanceof Variable)
 		{
-			return new BinaryExpression(variable, f.op(), f.right());
+			//return new BinaryExpression(variable, f.op(), f.right());
+			return variable.compose(f.op(), f.right());
 		}
 		else
 		{
-			return new BinaryExpression((Expression)f.left().accept(this)
-					, f.op(), 
+			//return new BinaryExpression((Expression)f.left().accept(this)
+			//		, f.op(), 
+			//		(Expression)f.right().accept(this));
+			return ((Expression)f.left().accept(this)).compose(
+					f.op(), 
 					(Expression)f.right().accept(this));
 		}
 	}

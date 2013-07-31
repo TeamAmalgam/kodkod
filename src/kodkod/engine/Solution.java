@@ -44,7 +44,7 @@ public final class Solution {
 	 * @requires outcome != null && stats != null
 	 * @requires outcome = SATISFIABLE || TRIVIALLY_SATISFIABLE => instance != null
 	 */
-	private Solution(Outcome outcome, Statistics stats, Instance instance, Proof proof) {
+	public Solution(Outcome outcome, Statistics stats, Instance instance, Proof proof) {
 		assert outcome != null && stats != null;
 		this.outcome = outcome;
 		this.stats = stats;
