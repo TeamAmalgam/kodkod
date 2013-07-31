@@ -1,7 +1,5 @@
 package kodkod.intelision;
 
-import java.util.HashSet;
-
 import kodkod.ast.BinaryExpression;
 import kodkod.ast.ComparisonFormula;
 import kodkod.ast.Decl;
@@ -19,23 +17,19 @@ import kodkod.ast.visitor.AbstractVoidVisitor;
 import kodkod.util.collections.IdentityHashSet;
 
 //Traverses the tree marking equality and inequality nodes 
-public class EqualityFinder extends AbstractVoidVisitor {
+class EqualityFinder extends AbstractVoidVisitor {
 
-	public IdentityHashSet<ComparisonFormula> comparisonNodes = new IdentityHashSet<ComparisonFormula>();
-	public IdentityHashSet<IntComparisonFormula> intComparisonNodes = new IdentityHashSet<IntComparisonFormula>();
+	final IdentityHashSet<ComparisonFormula> comparisonNodes = new IdentityHashSet<ComparisonFormula>();
+	final IdentityHashSet<IntComparisonFormula> intComparisonNodes = new IdentityHashSet<IntComparisonFormula>();
 	
 	
-	public String quantVariable;
-	public Expression quantExpression;
-	public String multiplicity; 
+	private String quantVariable; // TODO: is this used?
+	private Expression quantExpression;
+	private String multiplicity; 
 	
 	
 	
-	public EqualityFinder()
-	{
-		comparisonNodes = new IdentityHashSet<ComparisonFormula>();
-		intComparisonNodes = new IdentityHashSet<IntComparisonFormula>();
-	}
+	public EqualityFinder() { super(); }
 	/*
 	public static void callByType(Object f)
 	{
@@ -78,8 +72,9 @@ public class EqualityFinder extends AbstractVoidVisitor {
 	}
 	*/
 	
-	public void visit(ComparisonFormula f)
+	public void visit(final ComparisonFormula f)
 	{
+		// TODO: why are we throwing away the return values?
 		f.left().accept(this);
 		f.right().accept(this);
 		if(f.op() == ExprCompOperator.EQUALS && (f.left() instanceof IntToExprCast || f.right() instanceof IntToExprCast)){
@@ -134,18 +129,20 @@ public class EqualityFinder extends AbstractVoidVisitor {
 	
 	public void visit(IntComparisonFormula f)
 	{
+		// TODO: why are we throwing away the return values?
 		f.left().accept(this);
 		f.right().accept(this);
 		intComparisonNodes.add(f);
 	}
 	
-	public void visit(QuantifiedFormula f)
+	public void visit(final QuantifiedFormula f)
 	{
-		Decls decls = f.decls();
-		Decl d = decls.get(0);
+		final Decls decls = f.decls();
+		final Decl d = decls.get(0);
 		multiplicity = d.multiplicity().toString();
 		quantVariable = d.variable().toString();
 		quantExpression = d.expression();
+		// TODO: why are we throwing away the return value?
 		f.formula().accept(this);
 		multiplicity = null;
 		quantVariable = null;
