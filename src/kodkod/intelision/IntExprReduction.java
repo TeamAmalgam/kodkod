@@ -41,6 +41,7 @@ public final class IntExprReduction {
 		COMPARISON, EQUALEXPRESSIONS,INTCOMPARISON, INTCONSTANT
 	 */
 	
+	// TODO: make these not static
 	static IdentityHashSet<Node> reductions_delete = new IdentityHashSet<Node>();
 	static IdentityHashSet<Node> reductions_replace = new IdentityHashSet<Node>();
 	static IdentityHashSet<Node> reductions_swapVariables = new IdentityHashSet<Node>();
