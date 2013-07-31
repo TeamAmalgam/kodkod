@@ -23,15 +23,13 @@ import kodkod.instance.Universe;
 import kodkod.util.collections.IdentityHashSet;
 
 public final class IntExprReduction {
-	HashSet<String> vars = new HashSet<String>();
-	public HashSet<ComparisonFormula> comparisonNodes = new HashSet<ComparisonFormula>();
-	public HashSet<IntComparisonFormula> intComparisonNodes = new HashSet<IntComparisonFormula>();
-	public HashMap<String, Expression> swapAnswerPairs= new HashMap<String, Expression>();
-	public HashSet<String> bogusVariables = new HashSet<String>();//Relation>(); 
+	private HashSet<ComparisonFormula> comparisonNodes = new HashSet<ComparisonFormula>();
+	private HashSet<IntComparisonFormula> intComparisonNodes = new HashSet<IntComparisonFormula>();
+	private HashMap<String, Expression> swapAnswerPairs= new HashMap<String, Expression>();
+	private HashSet<String> bogusVariables = new HashSet<String>();//Relation>(); 
 	
-	Formula modifiedTree;
-	public Formula[] oldFormulas;
-	public boolean[] createNewTree;
+	private Formula modifiedTree;
+	private boolean[] createNewTree;
 	
 	/*
 	 * DELETE,
@@ -43,8 +41,8 @@ public final class IntExprReduction {
 	
 	// TODO: make these not static
 	static IdentityHashSet<Node> reductions_delete = new IdentityHashSet<Node>();
-	static IdentityHashSet<Node> reductions_replace = new IdentityHashSet<Node>();
-	static IdentityHashSet<Node> reductions_swapVariables = new IdentityHashSet<Node>();
+	private static IdentityHashSet<Node> reductions_replace = new IdentityHashSet<Node>();
+	private static IdentityHashSet<Node> reductions_swapVariables = new IdentityHashSet<Node>();
 	static IdentityHashSet<Node> reductions_comparison = new IdentityHashSet<Node>();
 	static IdentityHashSet<Node> reductions_equalExpressions = new IdentityHashSet<Node>();
 	static IdentityHashSet<Node> reductions_intComparison = new IdentityHashSet<Node>();
@@ -58,7 +56,7 @@ public final class IntExprReduction {
 	
 	//adds AST node to proper reductions set, making sure to remove it from any others first
 	//the removal checks can be deleted eventually
-	public void addReduction(Node n, IdentityHashSet<Node> set){
+	void addReduction(Node n, IdentityHashSet<Node> set){
 		reductions_delete.remove(n);
 		reductions_replace.remove(n);
 		reductions_swapVariables.remove(n);
@@ -146,10 +144,6 @@ public final class IntExprReduction {
 			}
 		
 		return formulas;
-	}
-	//XXX this was added in moolloy
-	public Formula[] resume(Formula...formulas){
-		return reduceIntExpressions(formulas);
 	}
 	
 	public void solve(Formula formula, Bounds bounds, TupleFactory factory, Universe universe, int bitwidth)
