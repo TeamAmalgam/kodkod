@@ -38,7 +38,7 @@ import kodkod.ast.Variable;
 import kodkod.ast.operator.ExprCastOperator;
 import kodkod.ast.visitor.ReturnVisitor;
 
-public class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
+class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 	private enum Replace{
 		FALSE,
 		COMPARISON,
