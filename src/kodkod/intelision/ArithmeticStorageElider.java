@@ -82,12 +82,12 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 			final String answer =relation.toString();
 			if(swapAnswerPairs.containsKey(answer))
 			{
-				final Expression e  = swapAnswerPairs.get(answer);//((Relation)binExpr.right()).name());
+				final Expression e  = swapAnswerPairs.get(answer);
 				if(e instanceof IntToExprCast){
 					if(replace == Replace.INTCOMPARISON){
 						
 						IntExpression i =(IntExpression) ((IntToExprCast)e).intExpr();
-						return (Expression)i.accept(new VariableReplacer(quantVariable));// binExpr.left());
+						return (Expression)i.accept(new VariableReplacer(quantVariable));
 					}
 					else if(replace == Replace.COMPARISON){
 						System.out.println("CHECK THIS WHEN IT COMES UP");
@@ -122,19 +122,18 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 			final String answer = EqualityFinder.myToString(binExpr, multiplicity, quantExpression);
 			if(swapAnswerPairs.containsKey(answer))
 			{
-				final Expression e  = swapAnswerPairs.get(answer);//((Relation)binExpr.right()).name());
+				final Expression e  = swapAnswerPairs.get(answer);
 				if(e instanceof IntToExprCast){
 					if(replace == Replace.INTCOMPARISON){
 						
 						final IntExpression i =(IntExpression) ((IntToExprCast)e).intExpr();
 						if(quantVariable != null)
-							return (IntExpression)i.accept(new VariableReplacer(quantVariable));// binExpr.left());
+							return (IntExpression)i.accept(new VariableReplacer(quantVariable));
 					}
 					else if(replace == Replace.COMPARISON){
 						System.out.println("CHECK THIS WHEN IT COMES UP");
 						if(quantVariable != null)
 							return (Expression)e.accept(new VariableReplacer((Variable)binExpr.left()));
-							//return (Expression)VariableReplacer.build(e, ((Variable)binExpr.left()));
 					}
 				}
 			}
@@ -225,7 +224,6 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public Formula visit(IntComparisonFormula n) {
-			//if(n.reduction == Reduction.INTCOMPARISON ){
 			if(IntExprReduction.reductions_intComparison.contains(n)){
 				replace = Replace.INTCOMPARISON;
 				final IntExpression newIE = (IntExpression)((IntExpression)n.left().accept(this));
@@ -245,8 +243,6 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 			quantExpression = d.expression().toString();
 			final Formula f2 = (Formula)qf.formula().accept(this);
 			final QuantifiedFormula qf2 = (QuantifiedFormula) f2.quantify(qf.quantifier(), decls);
-//			QuantifiedFormula q = new QuantifiedFormula(quantFormula.quantifier(), 
-//					quantFormula.decls(), (Formula)quantFormula.formula().accept(this));
 			multiplicity = null;
 			quantVariable = null;
 			quantExpression = null;
@@ -262,7 +258,6 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 			final Formula left = (Formula)bf.left().accept(this);
 			final Formula right = (Formula)bf.right().accept(this);
 			return (BinaryFormula) left.compose(bf.op(), right);
-//			return new BinaryFormula(left, binFormula.op(), right);
 		}
 
 		
@@ -279,24 +274,18 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public Formula visit(final ComparisonFormula n) {
-			//if(n.reduction == Reduction.DELETE){ //|| n.reduction == Reduction.INTCONSTANT){
 			if(IntExprReduction.reductions_delete.contains(n)){
 				return Formula.constant(true);
 			}
-			//else if(n.reduction == Reduction.INTCONSTANT)
 			else if(IntExprReduction.reductions_intConstant.contains(n)){
 				return n;
 			}
-			//else if(n.reduction == Reduction.EQUALEXPRESSIONS){
 			else if(IntExprReduction.reductions_equalExpressions.contains(n)){
 				final ComparisonFormula tempForm = (ComparisonFormula)n;
-				//return new ComparisonFormula(tempForm.right(), tempForm.op(), tempForm.equalExpression);
 				return tempForm.right().compare(tempForm.op(), IntExprReduction.equalExpressions.get(tempForm));  
 			}
-			//else if( n.reduction == Reduction.COMPARISON)
 			else if(IntExprReduction.reductions_comparison.contains(n)){
 				replace = Replace.COMPARISON;
-				//newFormula = new ComparisonFormula((Expression)n.left().accept(this), n.op(), (Expression)n.right());
 				final Formula newFormula = ((Expression)n.left().accept(this)).compare(
 						n.op(),
 						(Expression)n.right());

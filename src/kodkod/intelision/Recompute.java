@@ -62,18 +62,14 @@ class Recompute {
 		{
 			Expression expr;
 			
-			//if(cf.reduction != Reduction.DELETE)
 			if(!IntExprReduction.reductions_delete.contains(cf))
 				continue;
-			//TupleSet ts = relationTuples.get(cf.variable);
 			TupleSet ts = relationTuples.get(IntExprReduction.variables.get(cf));
 			ArrayList<TemporaryTuple> temps = new ArrayList<TemporaryTuple>();
 			if(ts != null){
 				Iterator<Tuple> itr = ts.iterator();
-				//Tuple test  = getRightMostTuple((BinaryExpression)cf.left(), null);
 				while(itr.hasNext()){
 					Tuple tuple = itr.next();
-					//System.out.println(tuple);
 					Relation rightMostRelation = null;
 					Tuple rightMostTuple = null;
 					if(cf.right() instanceof BinaryExpression || cf.right() instanceof Relation){
@@ -141,91 +137,9 @@ class Recompute {
 			tempTuples.add(temps);
 		}
 		boundTemporaryTuplesToBitwidth(tempTuples);
-		//System.out.println("TEMP" + tempTuples);
 		return computeNewSolution(sol, tempTuples);
 	}
-	/*
-	//Creates the new solution with the corrected values for "dependent variables"
-	//Essentially a copy of the old Solution, but with a new Instance
-	//This method can probably simplified a lot, but I had trouble creating tuples, etc. due to Universe errors.. 
-	public static Solution computeNewSolution(Solution oldSolution, ArrayList<ArrayList<TemporaryTuple>> tempTuples)
-	{
-		Instance oldInstance = oldSolution.instance();
-		Universe oldUniverse = oldInstance.universe();
-		Iterator<Object> itr = oldUniverse.iterator();
-		ArrayList<Object> newUniverseList = new ArrayList<Object>();
-		
-		while(itr.hasNext())
-			newUniverseList.add(itr.next());
-		for(ArrayList<TemporaryTuple> a: tempTuples)
-			for(TemporaryTuple t: a)
-				if(!newUniverseList.contains(t.right()+""))
-					newUniverseList.add(t.right()+"");
-		
-		Universe newUniverse = new Universe(newUniverseList);
-		IntSet set = oldInstance.ints();
-		IntIterator intitr = set.iterator();
-		Bounds b = new Bounds(newUniverse);
-		while(intitr.hasNext()){
-			TupleFactory factory = newUniverse.factory();
-			int i = intitr.next();
-			
-			b.boundExactly(i, factory.range(factory.tuple(i+"" ),factory.tuple( i+"" )));
-		
-		}	
-		
-		Instance newInstance = new Instance(newUniverse);
-		Set<Relation> keys =  relationTuples.keySet();
-		Iterator<Relation> itr2 = keys.iterator();
-		
-		newInstance.ints = b.intBounds();
-		while(itr2.hasNext()){
-			Relation r = itr2.next();
-			TupleSet ts = relationTuples.get(r);
-			if(!bogusVariables.contains(r))
-			{
-				Iterator<Tuple> itr3 = ts.iterator();
-				TupleSet newTupleSet = newUniverse.factory().noneOf(ts.arity());
-				while(itr3.hasNext())
-				{
-					Tuple next = itr3.next();
-					Tuple newTuple;
-					if(ts.arity() == 1)
-						newTuple = newUniverse.factory().tuple(next.atom(0));
-					else
-						newTuple = newUniverse.factory().tuple(next.atom(0), next.atom(1));
-					newTupleSet.add(newTuple);
-					
-					
-				}
-				newInstance.add(r, newTupleSet);
-			}
-		}
-		
-		
-		
-		for(int i = 0; i < tempTuples.size(); i++)
-		{
-			TupleSet newTupleSet = newUniverse.factory().noneOf(bogusRelations.get(i).arity());
-			for(int j = 0; j < tempTuples.get(i).size(); j++){
-				//System.out.println(tempTuples.get(i));
-				//System.out.println(bogusRelations.get(i));
-				if(bogusRelations.get(i).arity() == 2){
-					newTupleSet.add(newUniverse.factory().tuple(tempTuples.get(i).get(j).left(), tempTuples.get(i).get(j).right()+""));
-				}
-				else if(bogusRelations.get(i).arity() == 1){
-					newTupleSet.add(newUniverse.factory().tuple(tempTuples.get(i).get(j).right()+""));
-				}
-				else{
-					System.out.println("BAD ARITY");
-					System.exit(1);
-				}
-				newInstance.add(bogusRelations.get(i), newTupleSet);		
-			}
-		}
-		return new Solution(oldSolution.outcome(), oldSolution.stats(), newInstance, oldSolution.proof());
-	}
-	*/
+
 	//Creates the new solution with the corrected values for "dependent variables"
 	//Essentially a copy of the old Solution, but with a new Instance
 	//This method can probably simplified a lot, but I had trouble creating tuples, etc. due to Universe errors.. 
@@ -250,7 +164,6 @@ class Recompute {
 					newUniverseList.add(t.right()+"");
 		
 		Universe newUniverse = new Universe(newUniverseList);
-		//System.out.println("B" + newUniverse);
 		Instance newInstance = new Instance(newUniverse);
 		Set<Relation> keys =  relationTuples.keySet();
 		Iterator<Relation> itr2 = keys.iterator();
@@ -281,8 +194,6 @@ class Recompute {
 		{
 			TupleSet newTupleSet = newUniverse.factory().noneOf(bogusRelations.get(i).arity());
 			for(int j = 0; j < tempTuples.get(i).size(); j++){
-				//System.out.println(tempTuples.get(i));
-				//System.out.println(bogusRelations.get(i));
 				if(bogusRelations.get(i).arity() == 2){
 					newTupleSet.add(newUniverse.factory().tuple(tempTuples.get(i).get(j).left(), tempTuples.get(i).get(j).right()+""));
 				}
@@ -294,46 +205,31 @@ class Recompute {
 					System.exit(1);
 				}
 				newInstance.add(bogusRelations.get(i), newTupleSet);
-				String newInt = /*Integer.parseInt(*/(String)newTupleSet.iterator().next().atom(newTupleSet.arity()-1);
-				//b.boundExactly(newInt, factory.range(factory.tuple(newInt+"" ),factory.tuple( newInt+"" )));
-				System.out.println("NEWINTS: " + newInt);
+				String newInt = (String)newTupleSet.iterator().next().atom(newTupleSet.arity()-1);
 				newInts.add(newInt);
 			}
 		}
-		//newInstance.ints = b.intBounds();
 		
 		//XXX hack this can probably be done differently
 		for(String s: newInts)
 			if(!newUniverseList.contains(s))
 				newUniverseList.add(s);
 		Universe lastUniverse = new Universe(newUniverseList);
-		TupleFactory lastFactory = lastUniverse.factory();
-		//Bounds b = new Bounds(lastUniverse);
-		Bounds b = new Bounds(newUniverse);//(lastUniverse);
+		Bounds b = new Bounds(newUniverse);
 		IntSet set = oldInstance.ints();
 		IntIterator intitr = set.iterator();
 		while(intitr.hasNext()){
-			//TupleFactory factory = newUniverse.factory();
-			//System.out.println("in");
 			int i = intitr.next();
 			b.boundExactly(i, newUniverse.factory().range(newUniverse.factory().tuple(i+"" ),newUniverse.factory().tuple( i+"" )));
 		}	
 		
 		for(String s: newInts){
-			//System.out.println("in");
-			//TupleFactory factory = newUniverse.factory();
 			b.boundExactly(Integer.parseInt(s), newUniverse.factory().range(newUniverse.factory().tuple(s),newUniverse.factory().tuple( s)));
 		}
-		//newInstance.ints = b.intBounds();
-		//Instance lastInstance = new Instance(lastUniverse, newInstance.tuples, b.intBounds());
-		//Instance lastInstance2 = new Instance(lastUniverse);
+
 		for(IndexedEntry<TupleSet> t : b.intBounds()){
-			newInstance.add(t.index(), t.value());//lastInstance2.add(t.index(), t.value());
+			newInstance.add(t.index(), t.value());
 		}
-		//for(Relation r : newInstance.relationTuples().keySet()){
-		//	lastInstance2.add(r, newInstance.relationTuples().get(r));
-		//}
-		//System.out.println(lastInstance);
 		
 		return new Solution(oldSolution.outcome(), oldSolution.stats(), newInstance, oldSolution.proof());
 	}
@@ -482,8 +378,6 @@ class Recompute {
 			
 			String[] ltemp = l.left.toString().split("\\$");
 			String[] rtemp = r.left.toString().split("\\$");
-			//System.out.println(Arrays.toString(ltemp));
-			//System.out.println(Arrays.toString(rtemp));
 			int lindex = Integer.parseInt(ltemp[ltemp.length-1]);
 			int rindex = Integer.parseInt(rtemp[rtemp.length-1]);
 			
