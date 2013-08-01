@@ -30,14 +30,15 @@ public final class Z3Translator
     }
 
     public final class TypedVariableWithConstraint {
-        public TypedVariableWithConstraint(Symbol variableName, Sort type, BoolExpr constraint, TupleSet domain) {
-            this.variableName = variableName;
+        public TypedVariableWithConstraint(String name, Symbol symbolName, Sort type, BoolExpr constraint, TupleSet domain) {
+            this.name = name;
+            this.symbolName = symbolName;
             this.type = type;
             this.constraint = constraint;
             this.domain = domain;
         }
-
-        public final Symbol variableName;
+        public final String name;
+        public final Symbol symbolName;
         public final Sort type;
         public final BoolExpr constraint;
         public final TupleSet domain;
@@ -59,7 +60,7 @@ public final class Z3Translator
     private HashMap<Integer, SetSort> arityToSetType;
     private ArrayExpr intToExprLookupArray;
     private TupleSet intToExprRange;
-
+    private HashMap<String, TupleSet> variableToDomain;
     private int currentId = 0;
 
     private TupleSort tupleTypeForArity(int arity) {
@@ -109,6 +110,7 @@ public final class Z3Translator
         this.symbolToRelationMappings = new HashMap<Symbol, Relation>();
         this.arityToTupleType = new HashMap<Integer, TupleSort>();
         this.arityToSetType = new HashMap<Integer, SetSort>();
+        this.variableToDomain = new HashMap<String, TupleSet>();
     }
 
     public void generateTranslation() {
@@ -246,6 +248,7 @@ public final class Z3Translator
 
     public List<TypedVariableWithConstraint> visit(Decl decl) {
         List<TypedVariableWithConstraint> toReturn = new ArrayList<TypedVariableWithConstraint>(1);
+        String name;
         Symbol variableName = null;
         BoolExpr constraint = null;
         Sort sort = null;
@@ -253,6 +256,7 @@ public final class Z3Translator
 
         ExprWithDomain expr = decl.expression().accept(this);
 
+        name = decl.variable().name();
         domain = expr.domain;
         sort = setTypeForArity(decl.variable().arity());
 
@@ -295,7 +299,7 @@ public final class Z3Translator
         } catch (Z3Exception e) {
             throw new RuntimeException(e);
         }
-        toReturn.add(new TypedVariableWithConstraint(variableName, sort, constraint, domain));
+        toReturn.add(new TypedVariableWithConstraint(name, variableName, sort, constraint, domain));
         return toReturn;
     }
 
@@ -313,7 +317,21 @@ public final class Z3Translator
     }
 
     public ExprWithDomain visit(Variable variable) {
-        throw new RuntimeException("Not Implemented Yet.");
+        Expr exprToReturn = null;
+        TupleSet domainToReturn = null;
+        Symbol varName;
+        try {
+            varName = context.MkSymbol("var$" + variable.name());
+            exprToReturn = context.MkConst(varName, setTypeForArity(variable.arity()));
+        } catch (Z3Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        domainToReturn = variableToDomain.get(variable.name());
+        if (domainToReturn == null) {
+            throw new RuntimeException("Found variable without defined domain " + variable.name() + ".");
+        }
+        return new ExprWithDomain(exprToReturn, domainToReturn);
     }
 
     public ExprWithDomain visit(ConstantExpression constExpr) {
@@ -657,7 +675,32 @@ public final class Z3Translator
     }
 
     public BoolExpr visit(QuantifiedFormula quantFormula) {
-        quantFormula.decls().accept(this);
+        List<TypedVariableWithConstraint> variables = quantFormula.decls().accept(this);
+        BoolExpr[] variableConstraints = new BoolExpr[variables.size()];
+        // Add the variables to the domain lookup table and gather constraints.
+        int i = 0;
+        for (TypedVariableWithConstraint tvwc : variables) {
+            variableToDomain.put(tvwc.name, tvwc.domain);
+            variableConstraints[i] = tvwc.constraint;
+        }
+
+        BoolExpr innerConstraint = quantFormula.formula().accept(this);
+        //try {
+            switch(quantFormula.quantifier()) {
+                case ALL:
+                    throw new RuntimeException("Not Implemented Yet.");
+                case SOME:
+                    throw new RuntimeException("Not Implemented Yet.");
+                default:
+            }
+        //} catch (Z3Exception e) {
+        //   throw new RuntimeException(e); 
+        //}
+
+        // Remove the variables declared from this quantifier from the domain lookup table.
+        for (TypedVariableWithConstraint tvwc : variables) {
+            variableToDomain.remove(tvwc.name);
+        } 
 
         System.out.println(quantFormula);
         System.out.println("Quantifier: ");
@@ -775,10 +818,42 @@ public final class Z3Translator
                     break;
                 case LONE:
                     throw new RuntimeException("Not implemented yet.");
-                case ONE:
-                    throw new RuntimeException("Not implemented yet.");
-                case SOME:
-                    throw new RuntimeException("Not implemented yet.");
+                case ONE: {
+                    Symbol tempVarName = context.MkSymbol("tv" + getId());
+                    Expr tempVarConst = context.MkConst(tempVarName, tupleTypeForArity(multFormula.expression().arity()));
+                    BoolExpr cardinalityConstraint = context.MkExists(
+                        new Expr[] {tempVarConst},
+                        context.MkAnd(new BoolExpr[] {
+                            (BoolExpr)context.MkSetMembership(tempVarConst, innerFormula.expr),
+                            context.MkEq(
+                                context.MkEmptySet(tupleTypeForArity(multFormula.expression().arity())),
+                                context.MkSetDel(innerFormula.expr, tempVarConst)
+                            )
+                        }),
+                        0,
+                        null,
+                        null,
+                        null,
+                        null
+                    );
+                    toReturn = cardinalityConstraint;
+                    break;
+                }
+                case SOME: {
+                    Symbol tempVarName = context.MkSymbol("tv" + getId());
+                    Expr tempVarConst = context.MkConst(tempVarName, tupleTypeForArity(multFormula.expression().arity()));
+                    BoolExpr cardinalityConstraint = context.MkExists(
+                        new Expr[] {tempVarConst},
+                        (BoolExpr)context.MkSetMembership(tempVarConst, innerFormula.expr),
+                        0,
+                        null,
+                        null,
+                        null,
+                        null
+                    );
+                    toReturn = cardinalityConstraint;
+                    break;
+                }
                 default:
                     throw new RuntimeException("Unsupported multiplicity " + multFormula.multiplicity());
             }
