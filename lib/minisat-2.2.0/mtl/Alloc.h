@@ -65,8 +65,12 @@ class RegionAllocator
 
     T*       lea       (Ref r)       { assert(r >= 0 && r < sz); return &memory[r]; }
     const T* lea       (Ref r) const { assert(r >= 0 && r < sz); return &memory[r]; }
-    Ref      ael       (const T* t)  { assert((void*)t >= (void*)&memory[0] && (void*)t < (void*)&memory[sz-1]);
-        return  (Ref)(t - &memory[0]); }
+    Ref      ael       (const T* t)  {
+        if ((void*)t >= (void*)&memory[0] && (void*)t < (void*)&memory[sz-1]) {
+            return  (Ref)(t - &memory[0]);
+        }
+        return Ref_Undef;
+    }
 
     void     moveTo(RegionAllocator& to) {
         if (to.memory != NULL) ::free(to.memory);
@@ -163,8 +167,8 @@ class GenerationalRegionAllocator
         typedef typename RegionAllocator<T>::Ref Ref;
 
         Generation(uint32_t start_cap) :
-            allocator(start_cap),
-            ref_count(1)
+            ref_count(1),
+            allocator(start_cap)
         {
         }
 
