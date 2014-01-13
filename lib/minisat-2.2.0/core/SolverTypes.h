@@ -192,22 +192,22 @@ public:
 
 
 const CRef CRef_Undef = RegionAllocator<uint32_t>::Ref_Undef;
-class ClauseAllocator : public RegionAllocator<uint32_t>
+class ClauseAllocator : public GenerationalRegionAllocator<uint32_t>
 {
     static int clauseWord32Size(int size, bool has_extra){
         return (sizeof(Clause) + (sizeof(Lit) * (size + (int)has_extra))) / sizeof(uint32_t); }
  public:
     bool extra_clause_field;
 
-    ClauseAllocator(uint32_t start_cap) : RegionAllocator<uint32_t>(start_cap), extra_clause_field(false){}
+    ClauseAllocator(uint32_t start_cap) : GenerationalRegionAllocator<uint32_t>(start_cap), extra_clause_field(false){}
     ClauseAllocator() : extra_clause_field(false){}
     void moveTo(ClauseAllocator& to){
         to.extra_clause_field = extra_clause_field;
-        RegionAllocator<uint32_t>::moveTo(to); }
+        GenerationalRegionAllocator<uint32_t>::moveTo(to); }
 
-    void copyTo(ClauseAllocator& to) const {
+    void copyTo(ClauseAllocator& to) {
         to.extra_clause_field = extra_clause_field;
-        RegionAllocator<uint32_t>::copyTo(to);
+        GenerationalRegionAllocator<uint32_t>::copyTo(to);
     }
     
     template<class Lits>
@@ -217,23 +217,23 @@ class ClauseAllocator : public RegionAllocator<uint32_t>
         assert(sizeof(float)    == sizeof(uint32_t));
         bool use_extra = learnt | extra_clause_field;
 
-        CRef cid = RegionAllocator<uint32_t>::alloc(clauseWord32Size(ps.size(), use_extra));
+        CRef cid = GenerationalRegionAllocator<uint32_t>::alloc(clauseWord32Size(ps.size(), use_extra));
         new (lea(cid)) Clause(ps, use_extra, learnt);
 
         return cid;
     }
 
     // Deref, Load Effective Address (LEA), Inverse of LEA (AEL):
-    Clause&       operator[](Ref r)       { return (Clause&)RegionAllocator<uint32_t>::operator[](r); }
-    const Clause& operator[](Ref r) const { return (Clause&)RegionAllocator<uint32_t>::operator[](r); }
-    Clause*       lea       (Ref r)       { return (Clause*)RegionAllocator<uint32_t>::lea(r); }
-    const Clause* lea       (Ref r) const { return (Clause*)RegionAllocator<uint32_t>::lea(r); }
-    Ref           ael       (const Clause* t){ return RegionAllocator<uint32_t>::ael((uint32_t*)t); }
+    Clause&       operator[](Ref r)       { return (Clause&)GenerationalRegionAllocator<uint32_t>::operator[](r); }
+    const Clause& operator[](Ref r) const { return (Clause&)GenerationalRegionAllocator<uint32_t>::operator[](r); }
+    Clause*       lea       (Ref r)       { return (Clause*)GenerationalRegionAllocator<uint32_t>::lea(r); }
+    const Clause* lea       (Ref r) const { return (Clause*)GenerationalRegionAllocator<uint32_t>::lea(r); }
+    Ref           ael       (const Clause* t){ return GenerationalRegionAllocator<uint32_t>::ael((uint32_t*)t); }
 
     void free(CRef cid)
     {
         Clause& c = operator[](cid);
-        RegionAllocator<uint32_t>::free(clauseWord32Size(c.size(), c.has_extra()));
+        GenerationalRegionAllocator<uint32_t>::free(clauseWord32Size(c.size(), c.has_extra()));
     }
 
     void reloc(CRef& cr, ClauseAllocator& to)

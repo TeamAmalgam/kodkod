@@ -137,6 +137,234 @@ RegionAllocator<T>::alloc(int size)
 
 
 //=================================================================================================
+// Simple Generational Region-based memory allocator:
+
+template<class T>
+class GenerationalRegionAllocator
+{
+    static const uint32_t GENERATION_BITS = 8;
+    static const uint32_t GENERATION_COUNT = (1 << GENERATION_BITS);
+
+    union InnerRef {
+        typename RegionAllocator<T>::Ref ref;
+        struct {
+            uint32_t generation : GENERATION_BITS;
+            uint32_t index : (sizeof(uint32_t) * 8 - GENERATION_BITS);
+        } fields;
+    };
+
+    class Generation {
+        uint32_t ref_count;
+        
+        RegionAllocator<T> allocator;
+
+    public:
+
+        typedef typename RegionAllocator<T>::Ref Ref;
+
+        Generation(uint32_t start_cap) :
+            allocator(start_cap),
+            ref_count(1)
+        {
+        }
+
+        ~Generation() {
+        }
+
+        void retain() { __sync_fetch_and_add(&ref_count, 1); }
+        void release() {
+            if (__sync_fetch_and_sub(&ref_count, 1) == 1) {
+              delete this;
+            }
+        };
+
+        Ref alloc(int size) { return allocator.alloc(size); }
+    
+        T&       operator[](Ref r)       {
+            return allocator[r];
+        }
+
+        const T& operator[](Ref r) const {
+            return allocator[r];
+        }
+
+        T*       lea       (Ref r)       {
+            return allocator.lea(r);
+        }
+
+        const T* lea       (Ref r) const {
+            return allocator.lea(r);
+        }
+
+        Ref      ael       (const T* t)  {
+            return allocator.ael(t);
+        }
+    };
+
+    Generation* generations[GENERATION_COUNT];
+    uint32_t current_generation;
+    uint32_t start_cap;
+    uint32_t size_;
+    uint32_t wasted_;
+
+ public:
+    typedef typename RegionAllocator<T>::Ref Ref;
+    enum { Ref_Undef = UINT32_MAX };
+    enum { Unit_Size = sizeof(uint32_t) };
+
+    explicit GenerationalRegionAllocator(uint32_t start_cap = 1024*1024) :
+        current_generation(0),
+        start_cap(start_cap),
+        size_(0),
+        wasted_(0)
+    {
+        for (uint32_t index = 0; index < GENERATION_COUNT; index += 1) {
+          generations[index] = NULL;
+        }
+
+        generations[0] = new Generation(start_cap);
+    }
+
+    ~GenerationalRegionAllocator()
+    {
+        for (uint32_t index = 0; index < GENERATION_COUNT; index += 1) {
+            if (generations[index] != NULL) {
+              generations[index]->release();
+              generations[index] = NULL;
+            }
+        }
+    }
+
+    uint32_t size      () const {
+        return size_;
+    }
+
+    uint32_t wasted    () const {
+        return wasted_;
+    }
+
+    Ref      alloc     (int size) {
+      Generation* generation = generations[current_generation]; 
+      InnerRef ref = {0};
+      ref.ref = generation->alloc(size);
+
+      if (ref.fields.generation != 0) {
+        throw OutOfMemoryException();
+      }
+    
+      this->size_ += size;
+      
+      ref.fields.generation = current_generation;
+      return ref.ref;
+    }; 
+
+    void     free      (int size)    { this->wasted_ += size; }
+
+    // Deref, Load Effective Address (LEA), Inverse of LEA (AEL):
+    T&       operator[](Ref r)       {
+        InnerRef ref;
+        ref.ref = r;
+        
+        Generation* generation = generations[ref.fields.generation];
+        ref.fields.generation = 0;
+      
+        return (*generation)[ref.ref]; 
+    }
+    const T& operator[](Ref r) const {
+        InnerRef ref;
+        ref.ref = r;
+        
+        Generation* generation = generations[ref.fields.generation];
+        ref.fields.generation = 0;
+      
+        return (*generation)[ref.ref]; 
+    }
+
+    T*       lea       (Ref r)       {
+        InnerRef ref;
+        ref.ref = r;
+
+        Generation* generation = generations[ref.fields.generation];
+        ref.fields.generation = 0;
+
+        return generation->lea(ref.ref);
+    }
+    const T* lea       (Ref r) const {
+        InnerRef ref;
+        ref.ref = r;
+
+        Generation* generation = generations[ref.fields.generation];
+        ref.fields.generation = 0;
+
+        return generation->lea(ref.ref);
+    }
+    Ref      ael       (const T* t)  {
+        InnerRef ref;
+        for (uint32_t generation = 0;
+             generation < GENERATION_COUNT &&
+             generations[generation] != NULL;
+             generation += 1)
+        {
+            ref.ref = generations[generation]->ael(t); 
+            if (ref.ref != UINT32_MAX) {
+                ref.fields.generation = generation;
+                return ref.ref;
+            }
+        }
+
+        ref.ref = UINT32_MAX;
+        return ref.ref;
+    }
+
+    void     moveTo(GenerationalRegionAllocator& to) {
+        for (uint32_t generation = 0;
+             generation < GENERATION_COUNT;
+             generation += 1)
+        {
+            if (to.generations[generation] != NULL) {
+                to.generations[generation]->release();
+                to.generations[generation] = NULL;
+            }
+
+            to.generations[generation] = this->generations[generation];
+            this->generations[generation] = NULL;
+        }
+
+        to.size_ = size_;
+        to.wasted_ = wasted_;
+        to.current_generation = current_generation;
+
+        size_ = wasted_ = current_generation = 0;
+    }
+
+    void     copyTo(GenerationalRegionAllocator& to) {
+        for (uint32_t generation = 0;
+             generation < GENERATION_COUNT;
+             generation += 1)
+        {
+            if (to.generations[generation] != NULL) {
+                to.generations[generation]->release();
+                to.generations[generation] = NULL;
+            }
+
+            to.generations[generation] = this->generations[generation];
+            if (this->generations[generation] != NULL) {
+              this->generations[generation]->retain();
+            }
+        }
+
+        current_generation += 1;
+
+        this->generations[current_generation] = new Generation(start_cap);
+        to.generations[current_generation] = new Generation(to.start_cap);
+
+        to.size_ = size_;
+        to.wasted_ = wasted_;
+        to.current_generation = current_generation;
+    }
+
+};
+
 }
 
 #endif

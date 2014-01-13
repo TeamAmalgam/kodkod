@@ -144,7 +144,7 @@ Solver::Solver(const Solver& original) :
   , propagation_budget(original.propagation_budget)
   , asynch_interrupt  (original.asynch_interrupt)
 {
-    original.ca.copyTo(ca);
+    (const_cast<Solver&>(original)).ca.copyTo(ca);
 
     // Copy model vector
     original.model.copyTo(model);
