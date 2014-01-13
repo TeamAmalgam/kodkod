@@ -152,8 +152,8 @@ class GenerationalRegionAllocator
     union InnerRef {
         typename RegionAllocator<T>::Ref ref;
         struct {
-            uint32_t generation : GENERATION_BITS;
             uint32_t index : (sizeof(uint32_t) * 8 - GENERATION_BITS);
+            uint32_t generation : GENERATION_BITS;
         } fields;
     };
 
