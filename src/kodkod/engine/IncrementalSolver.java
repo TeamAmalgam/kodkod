@@ -172,7 +172,6 @@ public final class IncrementalSolver implements KodkodSolver {
 			System.out.println("Initial Solve");
 			System.out.println("Solving: " + f);
 			// This is the first formula so we need to run the full int reduction on it.
-			IntExprReduction.clearStatics();
 			Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
 			f = Formula.compose(FormulaOperator.AND, resultingFormulas);
 			System.out.println("By Solving: " + f);

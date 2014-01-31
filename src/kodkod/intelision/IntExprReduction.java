@@ -32,21 +32,21 @@ public final class IntExprReduction {
 	private boolean[] createNewTree;
 	
 	// TODO: make these not static
-	static IdentityHashSet<Node> reductions_delete = new IdentityHashSet<Node>();
-	private static IdentityHashSet<Node> reductions_replace = new IdentityHashSet<Node>();
-	private static IdentityHashSet<Node> reductions_swapVariables = new IdentityHashSet<Node>();
-	static IdentityHashSet<Node> reductions_comparison = new IdentityHashSet<Node>();
-	static IdentityHashSet<Node> reductions_equalExpressions = new IdentityHashSet<Node>();
-	static IdentityHashSet<Node> reductions_intComparison = new IdentityHashSet<Node>();
-	static IdentityHashSet<Node> reductions_intConstant = new IdentityHashSet<Node>();
+	IdentityHashSet<Node> reductions_delete;
+	private IdentityHashSet<Node> reductions_replace;
+	private IdentityHashSet<Node> reductions_swapVariables;
+	IdentityHashSet<Node> reductions_comparison;
+	IdentityHashSet<Node> reductions_equalExpressions;
+	IdentityHashSet<Node> reductions_intComparison;
+	IdentityHashSet<Node> reductions_intConstant;
 	
 	//***** is there any problem with using a regular hashmap?
-	static IdentityHashMap<Node, String> answers = new IdentityHashMap<Node, String>();
+	IdentityHashMap<Node, String> answers;
 	//can the second type param be changed to Expression?
-	static IdentityHashMap<Node, Node> variables = new IdentityHashMap<Node, Node>();
-	static IdentityHashMap<Node, Expression> equalExpressions = new IdentityHashMap<Node, Expression>();
+	IdentityHashMap<Node, Node> variables;
+	IdentityHashMap<Node, Expression> equalExpressions;
 	
-	public static void clearStatics() {
+	public IntExprReduction() {
 		reductions_delete = new IdentityHashSet<Node>();
 		reductions_replace = new IdentityHashSet<Node>();
 		reductions_swapVariables = new IdentityHashSet<Node>();
@@ -79,7 +79,7 @@ public final class IntExprReduction {
 		for(int i = 0; i < formulas.length; i++) 
 		{
 			final Formula f = formulas[i];
-			final EqualityFinder equalityFinder = new EqualityFinder();
+			final EqualityFinder equalityFinder = new EqualityFinder(this);
 			f.accept(equalityFinder);
 			final IdentityHashSet<ComparisonFormula> currentComparisonNodes = equalityFinder.comparisonNodes;
 			final IdentityHashSet<IntComparisonFormula> currentInequalityNodes = equalityFinder.intComparisonNodes;
@@ -132,13 +132,12 @@ public final class IntExprReduction {
 	}
 	
 	public Formula reduceFormula(Formula f) {
-		ArithmeticStorageElider elider = new ArithmeticStorageElider(swapAnswerPairs);
+		ArithmeticStorageElider elider = new ArithmeticStorageElider(this, swapAnswerPairs);
 		return (Formula)f.accept(elider);
 	}
 
 	public Solution recompute(Solution soln, Universe universe, Options options) {
-		Recompute.clearStatics();
-		return Recompute.recompute(soln, universe.factory(), comparisonNodes, bogusVariables, options);
+		return new Recompute(this).recompute(soln, universe.factory(), comparisonNodes, bogusVariables, options);
 	}
 
 	public void solve(Formula formula, Bounds bounds, TupleFactory factory, Universe universe, int bitwidth)
@@ -155,7 +154,7 @@ public final class IntExprReduction {
 
 		System.out.println(sol.toString());
 		
-		System.out.println(Recompute.recompute(sol, factory, comparisonNodes, bogusVariables, solver.options()).toString());
+		System.out.println(new Recompute(this).recompute(sol, factory, comparisonNodes, bogusVariables, solver.options()).toString());
 	}
 	
 	

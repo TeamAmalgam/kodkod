@@ -39,12 +39,16 @@ import kodkod.ast.operator.ExprCastOperator;
 import kodkod.ast.visitor.ReturnVisitor;
 
 class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
+	
 	private enum Replace{
 		FALSE,
 		COMPARISON,
 		INTCOMPARISON,
 		VARIABLES
 	};
+	
+	IntExprReduction ier;
+	
 	private Replace replace = Replace.FALSE;
 	private final Map<String, Expression> swapAnswerPairs;
 	
@@ -52,8 +56,9 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 	public String quantExpression="";
 	public String multiplicity=""; 
 	
-	public ArithmeticStorageElider(Map<String, Expression> swapAnswerPairs)
+	public ArithmeticStorageElider(IntExprReduction ier, Map<String, Expression> swapAnswerPairs)
 	{
+		this.ier = ier;
 		this.swapAnswerPairs = Collections.unmodifiableMap(swapAnswerPairs);
 	}
 	
@@ -289,21 +294,21 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 		public Formula visit(final ComparisonFormula n) {
 			System.out.println("Visiting ComparisonFormula " + n);
 			//if(n.reduction == Reduction.DELETE){ //|| n.reduction == Reduction.INTCONSTANT){
-			if(IntExprReduction.reductions_delete.contains(n)){
+			if(ier.reductions_delete.contains(n)){
 				return Formula.constant(true);
 			}
 			//else if(n.reduction == Reduction.INTCONSTANT)
-			else if(IntExprReduction.reductions_intConstant.contains(n)){
+			else if(ier.reductions_intConstant.contains(n)){
 				return n;
 			}
 			//else if(n.reduction == Reduction.EQUALEXPRESSIONS){
-			else if(IntExprReduction.reductions_equalExpressions.contains(n)){
+			else if(ier.reductions_equalExpressions.contains(n)){
 				final ComparisonFormula tempForm = (ComparisonFormula)n;
 				//return new ComparisonFormula(tempForm.right(), tempForm.op(), tempForm.equalExpression);
-				return tempForm.right().compare(tempForm.op(), IntExprReduction.equalExpressions.get(tempForm));  
+				return tempForm.right().compare(tempForm.op(), ier.equalExpressions.get(tempForm));  
 			}
 			//else if( n.reduction == Reduction.COMPARISON)
-			else if(IntExprReduction.reductions_comparison.contains(n)){
+			else if(ier.reductions_comparison.contains(n)){
 				replace = Replace.COMPARISON;
 				//newFormula = new ComparisonFormula((Expression)n.left().accept(this), n.op(), (Expression)n.right());
 				final Formula newFormula = ((Expression)n.left().accept(this)).compare(

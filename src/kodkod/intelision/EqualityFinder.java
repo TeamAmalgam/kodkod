@@ -21,6 +21,7 @@ import kodkod.util.collections.IdentityHashSet;
 //Traverses the tree marking equality and inequality nodes 
 class EqualityFinder extends AbstractVoidVisitor {
 
+	IntExprReduction ier;
 	final IdentityHashSet<ComparisonFormula> comparisonNodes = new IdentityHashSet<ComparisonFormula>();
 	final IdentityHashSet<IntComparisonFormula> intComparisonNodes = new IdentityHashSet<IntComparisonFormula>();
 	
@@ -30,7 +31,10 @@ class EqualityFinder extends AbstractVoidVisitor {
 	
 	
 	
-	public EqualityFinder() { super(); }
+	public EqualityFinder(IntExprReduction ier) { 
+		super();
+		this.ier = ier;
+	}
 	/*
 	public static void callByType(Object f)
 	{
@@ -84,33 +88,33 @@ class EqualityFinder extends AbstractVoidVisitor {
 				comparisonNodes.add(f);
 				System.out.println("Found comparison node: " + f);
 				//f.variable = (Relation)quantExpression;
-				IntExprReduction.variables.put(f, quantExpression);
+				ier.variables.put(f, quantExpression);
 				//System.out.println(f.variable);
 				if(f.left() instanceof Relation)
 					//f.answer = f.left().toString();
-					IntExprReduction.answers.put(f, f.left().toString());
+					ier.answers.put(f, f.left().toString());
 				else if(multiplicity != null)
 					//f.answer = myToString((BinaryExpression)f.left(), multiplicity.toString(), quantExpression.toString());
-					IntExprReduction.answers.put(f, 
+					ier.answers.put(f, 
 							myToString((BinaryExpression)f.left(), multiplicity.toString(), quantExpression.toString()));
 				else 
 					//f.answer = myToString((BinaryExpression)f.left(), "","");
-					IntExprReduction.answers.put(f, myToString((BinaryExpression)f.left(), "",""));
+					ier.answers.put(f, myToString((BinaryExpression)f.left(), "",""));
 			}
 			else if(f.right() instanceof BinaryExpression  || f.right() instanceof Relation){
 				//f.variable = (Relation)quantExpression;
-				IntExprReduction.variables.put(f, quantExpression);
+				ier.variables.put(f, quantExpression);
 				comparisonNodes.add(f);
 				System.out.println("Found comparison node: " + f);
 				if(f.right() instanceof Relation)
 					//f.answer = f.right().toString();
-					IntExprReduction.answers.put(f, f.right().toString());
+					ier.answers.put(f, f.right().toString());
 				else if(multiplicity != null)
 					//f.answer = myToString((BinaryExpression)f.right(), multiplicity.toString(), quantExpression.toString());
-					IntExprReduction.answers.put(f, myToString((BinaryExpression)f.right(), multiplicity.toString(), quantExpression.toString()));
+					ier.answers.put(f, myToString((BinaryExpression)f.right(), multiplicity.toString(), quantExpression.toString()));
 				else 
 					//f.answer = myToString((BinaryExpression)f.right(), "","");
-					IntExprReduction.answers.put(f, myToString((BinaryExpression)f.right(), "",""));
+					ier.answers.put(f, myToString((BinaryExpression)f.right(), "",""));
 			}
 				
 		}

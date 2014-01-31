@@ -34,6 +34,8 @@ import kodkod.util.ints.IntSet;
 
 class Recompute {
 
+	IntExprReduction ier;
+	
 	// TODO: make these not static
 	static HashSet<String> bogusVariables = new HashSet<String>();
 	static Map<Relation, TupleSet> relationTuples;
@@ -45,7 +47,8 @@ class Recompute {
 	static Evaluator evaluator;
 	static Options options;
 
-	public static void clearStatics() {
+	public Recompute(IntExprReduction ier) {
+		this.ier = ier;
 		bogusVariables = new HashSet<String>();
 		relationTuples = null;
 		formulas = null;
@@ -55,9 +58,8 @@ class Recompute {
 		numberOfType = 0;
 		evaluator = null;
 	}
-
-	//shouldn't be static
-	public static Solution recompute(Solution sol, TupleFactory factory, HashSet<ComparisonFormula> formulas, HashSet<String> bogusVariables, Options options){
+	
+	public Solution recompute(Solution sol, TupleFactory factory, HashSet<ComparisonFormula> formulas, HashSet<String> bogusVariables, Options options){
 		Recompute.formulas = formulas;
 		Recompute.bogusVariables = bogusVariables;
 		Recompute.factory = factory;
@@ -79,9 +81,9 @@ class Recompute {
 		{
 			Expression expr;
 			
-			if(!IntExprReduction.reductions_delete.contains(cf))
+			if(!ier.reductions_delete.contains(cf))
 				continue;
-			TupleSet ts = relationTuples.get(IntExprReduction.variables.get(cf));
+			TupleSet ts = relationTuples.get(ier.variables.get(cf));
 			ArrayList<TemporaryTuple> temps = new ArrayList<TemporaryTuple>();
 			if(ts != null){
 				Iterator<Tuple> itr = ts.iterator();
