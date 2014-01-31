@@ -15,9 +15,12 @@ import kodkod.ast.IntConstant;
 import kodkod.ast.IntToExprCast;
 import kodkod.ast.Node;
 import kodkod.ast.Relation;
+import kodkod.ast.SumExpression;
 import kodkod.ast.UnaryExpression;
 import kodkod.ast.Variable;
 import kodkod.engine.Solution;
+import kodkod.engine.Evaluator;
+import kodkod.engine.config.Options;
 import kodkod.instance.Bounds;
 import kodkod.instance.Instance;
 import kodkod.instance.Tuple;
@@ -39,23 +42,37 @@ class Recompute {
 	static int bitwidth;
 	static ArrayList<Relation> bogusRelations = new ArrayList<Relation>();
 	static int numberOfType = 0;
-	
-	
-	//shouldn't be static
-	public static Solution recompute(Solution sol, TupleFactory factory, HashSet<ComparisonFormula> formulas, HashSet<String> bogusVariables, int bitwidth){
+	static Evaluator evaluator;
+	static Options options;
 
+	public static void clearStatics() {
+		bogusVariables = new HashSet<String>();
+		relationTuples = null;
+		formulas = null;
+		factory = null;
+		bitwidth = 0;
+		bogusRelations = new ArrayList<Relation>();
+		numberOfType = 0;
+		evaluator = null;
+	}
+
+	//shouldn't be static
+	public static Solution recompute(Solution sol, TupleFactory factory, HashSet<ComparisonFormula> formulas, HashSet<String> bogusVariables, Options options){
 		Recompute.formulas = formulas;
 		Recompute.bogusVariables = bogusVariables;
 		Recompute.factory = factory;
-		Recompute.bitwidth = bitwidth;
-		
+		Recompute.bitwidth = options.bitwidth();
+		Recompute.options = options;
+
 		ArrayList<ArrayList<TemporaryTuple>> tempTuples = new ArrayList<ArrayList<TemporaryTuple>>();
 		
 		System.out.println("RECOMPUTE");
 		if(sol.outcome() == Solution.Outcome.UNSATISFIABLE)
 			return sol;
 		
+
 		Instance in = sol.instance();
+		Recompute.evaluator = new Evaluator(in, options);
 		relationTuples =  in.relationTuples();
 		
 		for(ComparisonFormula cf: formulas)
@@ -265,6 +282,8 @@ class Recompute {
 			return compute((ExprToIntCast) f,  tuple);
 		else if(f instanceof IntConstant)
 			return compute((IntConstant) f,  tuple);
+		else if(f instanceof SumExpression)
+			return compute((SumExpression) f, tuple);
 		else{
 			System.out.println("Error in recompute5");
 			System.out.println(f);
@@ -356,6 +375,16 @@ class Recompute {
 		}
 		System.out.println("error in recompute2");
 		return null;
+	}
+
+	public static TemporaryTuple compute(SumExpression s, Tuple t) {
+		System.out.println("Evaluating " + s);
+		System.out.println("With instance: " + evaluator.instance());
+		int result = evaluator.evaluate(s);
+		System.out.println("Evaluated " + s);
+		System.out.println("Got " + result);
+
+		return new TemporaryTuple("", result);
 	}
 	
 	public static ArrayList<TemporaryTuple> composeArrayLists(ArrayList<TemporaryTuple> left, char op, ArrayList<TemporaryTuple> right)

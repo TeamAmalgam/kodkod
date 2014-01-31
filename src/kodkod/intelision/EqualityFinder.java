@@ -82,6 +82,7 @@ class EqualityFinder extends AbstractVoidVisitor {
 			
 			if(f.left() instanceof BinaryExpression || f.left() instanceof Relation){ // && ((BinaryExpression)f.left()).right() instanceof Relation)
 				comparisonNodes.add(f);
+				System.out.println("Found comparison node: " + f);
 				//f.variable = (Relation)quantExpression;
 				IntExprReduction.variables.put(f, quantExpression);
 				//System.out.println(f.variable);
@@ -100,6 +101,7 @@ class EqualityFinder extends AbstractVoidVisitor {
 				//f.variable = (Relation)quantExpression;
 				IntExprReduction.variables.put(f, quantExpression);
 				comparisonNodes.add(f);
+				System.out.println("Found comparison node: " + f);
 				if(f.right() instanceof Relation)
 					//f.answer = f.right().toString();
 					IntExprReduction.answers.put(f, f.right().toString());
@@ -141,6 +143,7 @@ class EqualityFinder extends AbstractVoidVisitor {
 		f.left().accept(this);
 		f.right().accept(this);
 		intComparisonNodes.add(f);
+		System.out.println("Found int comparison: " + f);
 	}
 	
 	public void visit(final QuantifiedFormula f)

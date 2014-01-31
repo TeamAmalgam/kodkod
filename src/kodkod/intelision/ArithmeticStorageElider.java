@@ -67,14 +67,12 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 		//*************************************************
 		
 		public Decls visit(Decls decls) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
 		public   Decl visit(Decl decl) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
@@ -101,20 +99,17 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public   Variable visit(Variable variable) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
 		public   ConstantExpression visit(ConstantExpression constExpr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
 		public   UnaryExpression visit(UnaryExpression unaryExpr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
@@ -144,32 +139,28 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public NaryExpression visit(NaryExpression expr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
 		public Comprehension visit(Comprehension comprehension) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
 		public IfExpression visit(IfExpression ifExpr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
 		public   ProjectExpression visit(ProjectExpression project) {
-			return null;
+			throw new RuntimeException("Not Implemented Yet.");			
 			
 		}
 
 		
 		public   IntToExprCast visit(IntToExprCast castExpr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
@@ -180,8 +171,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public   IfIntExpression visit(IfIntExpression intExpr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
@@ -201,8 +191,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public   NaryIntExpression visit(NaryIntExpression intExpr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
@@ -213,28 +202,26 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public   UnaryIntExpression visit(UnaryIntExpression intExpr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
 		public   SumExpression visit(SumExpression intExpr) {
-			return null;
-			
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 		
 		public Formula visit(IntComparisonFormula n) {
 			//if(n.reduction == Reduction.INTCOMPARISON ){
-			if(IntExprReduction.reductions_intComparison.contains(n)){
+			//if(IntExprReduction.reductions_intComparison.contains(n)){
 				replace = Replace.INTCOMPARISON;
 				final IntExpression newIE = (IntExpression)((IntExpression)n.left().accept(this));
 				final Formula newFormula = newIE.compare(n.op(), (IntExpression)n.right().accept(this));
 				replace = Replace.FALSE;
 				return newFormula;
-			} else {
-				return null;
-			}
+			//} else {
+			//	throw new RuntimeException("Not Implemented Yet.");			
+			//}
 		}
 
 		public QuantifiedFormula visit(final QuantifiedFormula qf) {	
@@ -254,8 +241,9 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 		}
 		
 		public Formula visit(NaryFormula formula) {
-			if(formula.size() == 0)
-				return null;
+			if(formula.size() == 0) {
+				throw new RuntimeException("Not Implemented Yet.");			
+			}
 			Formula builtFormula = (Formula)formula.child(0).accept(this);
 			for(int i = 1; i < formula.size(); i++)
 				builtFormula = builtFormula.compose(formula.op(), (Formula)formula.child(i).accept(this));
@@ -271,14 +259,12 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public NotFormula visit(NotFormula not) {
-			return null;
-			
+			return not;
 		}
 
 		
 		public ConstantFormula visit(ConstantFormula constant) {
-			return null;
-			
+			return constant;
 		}
 
 		
@@ -318,7 +304,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 		}
 
 		public RelationPredicate visit(RelationPredicate predicate) {
-			return null;
+			throw new RuntimeException("Not Implemented Yet.");			
 		}
 
 }

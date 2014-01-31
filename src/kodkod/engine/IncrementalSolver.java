@@ -22,6 +22,7 @@
 package kodkod.engine;
 
 import kodkod.ast.Formula;
+import kodkod.ast.operator.FormulaOperator;
 import kodkod.engine.config.Options;
 import kodkod.engine.fol2sat.HigherOrderDeclException;
 import kodkod.engine.fol2sat.SymmetryDetector;
@@ -33,6 +34,7 @@ import kodkod.engine.satlab.SATFactory;
 import kodkod.engine.satlab.SATSolver;
 import kodkod.instance.Bounds;
 import kodkod.instance.Universe;
+import kodkod.intelision.IntExprReduction;
 
 /** 
  * A computational engine for solving a sequence of related relational
@@ -105,7 +107,8 @@ public final class IncrementalSolver implements KodkodSolver {
 	private final Options options;
 	private Translation.Incremental translation;
 	private Boolean outcome;
-	
+	private IntExprReduction reducer;
+
 	/**
 	 * Initializes the solver with the given options.
 	 * @ensures no this.solution' && no this.formulas' && 
@@ -114,6 +117,7 @@ public final class IncrementalSolver implements KodkodSolver {
 	private IncrementalSolver(Options options) { 
 		this.options = options;
 		this.outcome = null;
+		this.reducer = new IntExprReduction();
 	}
 	
 	/**
@@ -162,7 +166,24 @@ public final class IncrementalSolver implements KodkodSolver {
 
 		if (outcome != null && translation==null) 
 			throw new IllegalStateException("Cannot use this solver since a prior call to solve(...) resulted in an exception.");
-		
+	
+
+		if (translation == null) {
+			System.out.println("Initial Solve");
+			System.out.println("Solving: " + f);
+			// This is the first formula so we need to run the full int reduction on it.
+			IntExprReduction.clearStatics();
+			Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
+			f = Formula.compose(FormulaOperator.AND, resultingFormulas);
+			System.out.println("By Solving: " + f);
+		} else {
+			System.out.println("Additional Solve");
+			System.out.println("Solving: " + f);
+			// This is an additional constraint so we only need to run the substitutions on it.
+			f = reducer.reduceFormula(f);
+			System.out.println("By Solving: " + f);
+		}
+
 		final Solution solution;
 		try {			
 			final long startTransl = System.currentTimeMillis();
@@ -206,7 +227,8 @@ public final class IncrementalSolver implements KodkodSolver {
 			free();
 		}
 		
-		return solution;
+		Reducer.clearStatics();
+		return reducer.recompute(solution, b.universe(), this.options);
 	}
 
 	/**

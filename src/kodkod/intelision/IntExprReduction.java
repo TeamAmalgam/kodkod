@@ -46,6 +46,20 @@ public final class IntExprReduction {
 	static IdentityHashMap<Node, Node> variables = new IdentityHashMap<Node, Node>();
 	static IdentityHashMap<Node, Expression> equalExpressions = new IdentityHashMap<Node, Expression>();
 	
+	public static void clearStatics() {
+		reductions_delete = new IdentityHashSet<Node>();
+		reductions_replace = new IdentityHashSet<Node>();
+		reductions_swapVariables = new IdentityHashSet<Node>();
+		reductions_comparison = new IdentityHashSet<Node>();
+		reductions_equalExpressions = new IdentityHashSet<Node>();
+		reductions_intComparison = new IdentityHashSet<Node>();
+		reductions_intConstant = new IdentityHashSet<Node>();
+
+		answers = new IdentityHashMap<Node, String>();
+		variables = new IdentityHashMap<Node, Node>();
+		equalExpressions = new IdentityHashMap<Node, Expression>();
+	}
+
 	//adds AST node to proper reductions set, making sure to remove it from any others first
 	//the removal checks can be deleted eventually
 	private void addReduction(Node n, IdentityHashSet<Node> set){
@@ -110,14 +124,23 @@ public final class IntExprReduction {
 			if(createNewTree[i]){
 				final Formula f = formulas[i];
 
-				final ArithmeticStorageElider elider = new ArithmeticStorageElider(swapAnswerPairs);
-				modifiedTree = (Formula)f.accept(elider);
+				modifiedTree = reduceFormula(f);
 				formulas[i] = modifiedTree;
 			}
 		
 		return formulas;
 	}
 	
+	public Formula reduceFormula(Formula f) {
+		ArithmeticStorageElider elider = new ArithmeticStorageElider(swapAnswerPairs);
+		return (Formula)f.accept(elider);
+	}
+
+	public Solution recompute(Solution soln, Universe universe, Options options) {
+		Recompute.clearStatics();
+		return Recompute.recompute(soln, universe.factory(), comparisonNodes, bogusVariables, options);
+	}
+
 	public void solve(Formula formula, Bounds bounds, TupleFactory factory, Universe universe, int bitwidth)
 	{
 		Solver solver = new Solver();
@@ -132,7 +155,7 @@ public final class IntExprReduction {
 
 		System.out.println(sol.toString());
 		
-		System.out.println(Recompute.recompute(sol, factory, comparisonNodes, bogusVariables, bitwidth).toString());
+		System.out.println(Recompute.recompute(sol, factory, comparisonNodes, bogusVariables, solver.options()).toString());
 	}
 	
 	
