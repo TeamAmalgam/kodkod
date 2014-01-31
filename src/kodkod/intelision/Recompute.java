@@ -34,18 +34,17 @@ import kodkod.util.ints.IntSet;
 
 class Recompute {
 
+	Tuple mostRecentRight;
 	IntExprReduction ier;
-	
-	// TODO: make these not static
-	static HashSet<String> bogusVariables = new HashSet<String>();
-	static Map<Relation, TupleSet> relationTuples;
-	static HashSet<ComparisonFormula> formulas;
-	static TupleFactory factory;
-	static int bitwidth;
-	static ArrayList<Relation> bogusRelations = new ArrayList<Relation>();
-	static int numberOfType = 0;
-	static Evaluator evaluator;
-	static Options options;
+	HashSet<String> bogusVariables = new HashSet<String>();
+	Map<Relation, TupleSet> relationTuples;
+	HashSet<ComparisonFormula> formulas;
+	TupleFactory factory;
+	int bitwidth;
+	ArrayList<Relation> bogusRelations = new ArrayList<Relation>();
+	int numberOfType = 0;
+	Evaluator evaluator;
+	Options options;
 
 	public Recompute(IntExprReduction ier) {
 		this.ier = ier;
@@ -60,21 +59,19 @@ class Recompute {
 	}
 	
 	public Solution recompute(Solution sol, TupleFactory factory, HashSet<ComparisonFormula> formulas, HashSet<String> bogusVariables, Options options){
-		Recompute.formulas = formulas;
-		Recompute.bogusVariables = bogusVariables;
-		Recompute.factory = factory;
-		Recompute.bitwidth = options.bitwidth();
-		Recompute.options = options;
+		this.formulas = formulas;
+		this.bogusVariables = bogusVariables;
+		this.factory = factory;
+		this.bitwidth = options.bitwidth();
+		this.options = options;
 
 		ArrayList<ArrayList<TemporaryTuple>> tempTuples = new ArrayList<ArrayList<TemporaryTuple>>();
-		
-		System.out.println("RECOMPUTE");
 		if(sol.outcome() == Solution.Outcome.UNSATISFIABLE)
 			return sol;
 		
 
 		Instance in = sol.instance();
-		Recompute.evaluator = new Evaluator(in, options);
+		this.evaluator = new Evaluator(in, options);
 		relationTuples =  in.relationTuples();
 		
 		for(ComparisonFormula cf: formulas)
@@ -162,7 +159,7 @@ class Recompute {
 	//Creates the new solution with the corrected values for "dependent variables"
 	//Essentially a copy of the old Solution, but with a new Instance
 	//This method can probably simplified a lot, but I had trouble creating tuples, etc. due to Universe errors.. 
-	public static Solution computeNewSolution(Solution oldSolution, ArrayList<ArrayList<TemporaryTuple>> tempTuples)
+	public Solution computeNewSolution(Solution oldSolution, ArrayList<ArrayList<TemporaryTuple>> tempTuples)
 	{
 		Instance oldInstance = oldSolution.instance();
 		Universe oldUniverse = oldInstance.universe();
@@ -273,7 +270,7 @@ class Recompute {
 		return list;
 	}
 	
-	public static TemporaryTuple computeByType(Node f, Tuple tuple){
+	public TemporaryTuple computeByType(Node f, Tuple tuple){
 		if(f instanceof IntToExprCast)
 			return compute((IntToExprCast) f,  tuple);
 		else if(f instanceof BinaryIntExpression)
@@ -293,12 +290,12 @@ class Recompute {
 		}
 	}
 	
-	public static TemporaryTuple compute(IntToExprCast f, Tuple tuple)
+	public TemporaryTuple compute(IntToExprCast f, Tuple tuple)
 	{
 		return computeByType(f.intExpr(),  tuple);
 	}
 	
-	public static TemporaryTuple compute(BinaryExpression f, Tuple tuple)
+	public TemporaryTuple compute(BinaryExpression f, Tuple tuple)
 	{
 		Tuple rightMostTuple = getRightMostTuple(f, tuple);
 		if(rightMostTuple == null)
@@ -306,7 +303,7 @@ class Recompute {
 		return new TemporaryTuple("", Integer.parseInt(rightMostTuple.atom(1).toString()));
 	}
 	
-	public static TemporaryTuple compute(ExprToIntCast f, Tuple tuple)
+	public TemporaryTuple compute(ExprToIntCast f, Tuple tuple)
 	{
 		switch(f.op()){
 		case CARDINALITY:
@@ -320,12 +317,12 @@ class Recompute {
 		return null;
 	}
 	
-	public static TemporaryTuple compute(IntConstant f, Tuple tuple)
+	public TemporaryTuple compute(IntConstant f, Tuple tuple)
  	{
 		return new TemporaryTuple("",f.value());
 	}
 	
-	public static TemporaryTuple compute(BinaryIntExpression f, Tuple tuple)
+	public TemporaryTuple compute(BinaryIntExpression f, Tuple tuple)
 	{
 		TemporaryTuple l, r;
 		switch(f.op()){
@@ -379,7 +376,7 @@ class Recompute {
 		return null;
 	}
 
-	public static TemporaryTuple compute(SumExpression s, Tuple t) {
+	public TemporaryTuple compute(SumExpression s, Tuple t) {
 		System.out.println("Evaluating " + s);
 		System.out.println("With instance: " + evaluator.instance());
 		int result = evaluator.evaluate(s);
@@ -389,7 +386,7 @@ class Recompute {
 		return new TemporaryTuple("", result);
 	}
 	
-	public static ArrayList<TemporaryTuple> composeArrayLists(ArrayList<TemporaryTuple> left, char op, ArrayList<TemporaryTuple> right)
+	public ArrayList<TemporaryTuple> composeArrayLists(ArrayList<TemporaryTuple> left, char op, ArrayList<TemporaryTuple> right)
 	{
 		ArrayList<TemporaryTuple> vals = new ArrayList<TemporaryTuple>();
 		Iterator<TemporaryTuple> litr = left.iterator();
@@ -452,7 +449,7 @@ class Recompute {
 		return vals;
 	}
 	
-	public static void boundTemporaryTuplesToBitwidth(ArrayList<ArrayList<TemporaryTuple>> tempTuples)
+	public void boundTemporaryTuplesToBitwidth(ArrayList<ArrayList<TemporaryTuple>> tempTuples)
 	{
 		if(bitwidth == 32)
 			return;
@@ -461,7 +458,7 @@ class Recompute {
 				t.rebound(bitwidth);
 	}
 	
-	public static Relation getRightMostRelation(BinaryExpression b)
+	public Relation getRightMostRelation(BinaryExpression b)
 	{
 		BinaryExpression b2 = b;
 		while(!(b2.right() instanceof Relation))
@@ -472,9 +469,8 @@ class Recompute {
 	
 	
 	
-	//tired hack
-	static Tuple mostRecentRight;
-	public static Tuple getRightMostTuple(Expression b, Tuple s)
+
+	public Tuple getRightMostTuple(Expression b, Tuple s)
 	{
 		mostRecentRight = null;
 		ArrayList<Tuple> t = getRightMostTuple_h(b,s);
@@ -484,7 +480,7 @@ class Recompute {
 	}
 	
 	
-	public static ArrayList<Tuple> getRightMostTuple_h(Expression b, Tuple s)
+	public ArrayList<Tuple> getRightMostTuple_h(Expression b, Tuple s)
 	{
 		ArrayList<Tuple> tuples = new ArrayList<Tuple>();
 		if(b == null)
@@ -569,7 +565,7 @@ class Recompute {
 		return null;
 	}
 	
-	public static ArrayList<Tuple> myJoin(ArrayList<Tuple> l, ArrayList<Tuple> r)
+	public ArrayList<Tuple> myJoin(ArrayList<Tuple> l, ArrayList<Tuple> r)
 	{
 		if(l == null || r == null)
 			return null;
