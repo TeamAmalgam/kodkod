@@ -76,23 +76,30 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 		}
 
 		
-		public Expression visit(final Relation relation) {
+		public Node visit(final Relation relation) {
+			System.out.println("Visiting relation: " + relation);
 			final String answer =relation.toString();
 			if(swapAnswerPairs.containsKey(answer))
 			{
+				System.out.println("SwapAnswerPairs constains the answer.");
 				final Expression e  = swapAnswerPairs.get(answer);//((Relation)binExpr.right()).name());
 				if(e instanceof IntToExprCast){
 					if(replace == Replace.INTCOMPARISON){
 						
 						IntExpression i =(IntExpression) ((IntToExprCast)e).intExpr();
-						return (Expression)i.accept(new VariableReplacer(quantVariable));// binExpr.left());
+						Node returned = (Node)i.accept(new VariableReplacer(quantVariable));// binExpr.left());
+						System.out.println("Got returned " + returned);
+						return returned;
 					}
 					else if(replace == Replace.COMPARISON){
 						System.out.println("CHECK THIS WHEN IT COMES UP");
 						return (Expression)e.accept(new VariableReplacer(quantVariable));
 					}
+				} else {
+					throw new RuntimeException("Not Implemented Yet: " + e);
 				}
 			}
+			System.out.println("SwapAnswerPairs does not contain the answer.");
 			return relation;
 			
 		}
@@ -114,6 +121,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public Node visit(final BinaryExpression binExpr) {
+			System.out.println("Visiting binExpr: " + binExpr);
 			final String answer = EqualityFinder.myToString(binExpr, multiplicity, quantExpression);
 			if(swapAnswerPairs.containsKey(answer))
 			{
@@ -176,15 +184,18 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public IntExpression visit(final ExprToIntCast intExpr) {
-			if(replace == Replace.FALSE || intExpr.op() == ExprCastOperator.CARDINALITY)
+			System.out.println("Visiting ExprToIntCast " + intExpr);
+			if(replace == Replace.FALSE || intExpr.op() == ExprCastOperator.CARDINALITY) {
+				System.out.println("Not replacing ExprToIntCast");
 				return intExpr;
-			else
-			{
+			} else {
 				final Node n = intExpr.expression().accept(this);
 				if(n instanceof IntExpression)
 					return (IntExpression)n;
-				else
+				else {
+					System.out.println("Didn't receive an IntExpression");
 					return intExpr;
+				}
 							
 			}	
 		}
@@ -196,6 +207,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public BinaryIntExpression visit(BinaryIntExpression intExpr) {
+			System.out.println("Visiting BinaryIntExpression " + intExpr);
 			return new BinaryIntExpression((IntExpression)intExpr.left().accept(this), intExpr.op(), (IntExpression)intExpr.right().accept(this));
 			
 		}
@@ -212,6 +224,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public Formula visit(IntComparisonFormula n) {
+			System.out.println("Visiting IntComparisonFormula " + n);
 			//if(n.reduction == Reduction.INTCOMPARISON ){
 			//if(IntExprReduction.reductions_intComparison.contains(n)){
 				replace = Replace.INTCOMPARISON;
@@ -225,6 +238,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 		}
 
 		public QuantifiedFormula visit(final QuantifiedFormula qf) {	
+			System.out.println("Visiting QuantifiedFormula " + qf);
 			final Decls decls = qf.decls();
 			final Decl d = decls.get(0);
 			multiplicity = d.multiplicity().toString();
@@ -241,6 +255,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 		}
 		
 		public Formula visit(NaryFormula formula) {
+			System.out.println("Visiting NaryFormula " + formula);
 			if(formula.size() == 0) {
 				throw new RuntimeException("Not Implemented Yet.");			
 			}
@@ -251,6 +266,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 		}
 		
 		public BinaryFormula visit(final BinaryFormula bf) {
+			System.out.println("Visiting BinaryFormula " + bf);
 			final Formula left = (Formula)bf.left().accept(this);
 			final Formula right = (Formula)bf.right().accept(this);
 			return (BinaryFormula) left.compose(bf.op(), right);
@@ -259,16 +275,19 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public NotFormula visit(NotFormula not) {
+			System.out.println("Visiting NotFormula " + not);
 			return not;
 		}
 
 		
 		public ConstantFormula visit(ConstantFormula constant) {
+			System.out.println("Visiting ConstantFormula " + constant);
 			return constant;
 		}
 
 		
 		public Formula visit(final ComparisonFormula n) {
+			System.out.println("Visiting ComparisonFormula " + n);
 			//if(n.reduction == Reduction.DELETE){ //|| n.reduction == Reduction.INTCONSTANT){
 			if(IntExprReduction.reductions_delete.contains(n)){
 				return Formula.constant(true);
@@ -300,6 +319,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 
 		
 		public   MultiplicityFormula visit(MultiplicityFormula multFormula) {
+			System.out.println("Visiting MultiplicityFormula " + multFormula);
 			return multFormula;
 		}
 

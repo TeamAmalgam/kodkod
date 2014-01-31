@@ -44,12 +44,12 @@ class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 	
 	public Node visit(Decls f)
 	{
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 	
 	public  Node visit(Decl f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(BinaryIntExpression f) {
@@ -60,7 +60,7 @@ class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 
 	public  Node visit(IntConstant f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(IntToExprCast f) {
@@ -75,12 +75,12 @@ class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 
 	public  Node visit(Variable f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(ConstantExpression f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(Relation f) {
@@ -89,7 +89,7 @@ class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 
 	public  Node visit(NaryFormula formula) {
 		if(formula.size() == 0)
-			return null;
+			throw new RuntimeException("Not Implemented Yet.");
 		Formula builtFormula = (Formula)formula.child(0).accept(this);
 		for(int i = 1; i < formula.size(); i++)
 			builtFormula = builtFormula.compose(formula.op(), (Formula)formula.child(i).accept(this));
@@ -98,7 +98,7 @@ class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 
 	public  Node visit(NotFormula f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(final BinaryExpression f) {
@@ -120,90 +120,90 @@ class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 
 	public  Node visit(ConstantFormula f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(MultiplicityFormula f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(IntComparisonFormula f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(QuantifiedFormula f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(ComparisonFormula f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	public  Node visit(BinaryFormula f) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 	
 	public Node visit(UnaryExpression f){
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	@Override
 	public Node visit(NaryExpression expr) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	@Override
 	public Node visit(Comprehension comprehension) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	@Override
 	public Node visit(IfExpression ifExpr) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	@Override
 	public Node visit(ProjectExpression project) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	@Override
 	public Node visit(IfIntExpression intExpr) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	@Override
 	public Node visit(NaryIntExpression intExpr) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	@Override
 	public Node visit(UnaryIntExpression intExpr) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 
 	@Override
 	public Node visit(SumExpression intExpr) {
 		// TODO Auto-generated method stub
-		return null;
+		return intExpr;
 	}
 
 	@Override
 	public Node visit(RelationPredicate predicate) {
 		// TODO Auto-generated method stub
-		return null;
+		throw new RuntimeException("Not Implemented Yet.");
 	}
 	
 	
