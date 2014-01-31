@@ -227,7 +227,6 @@ public final class IncrementalSolver implements KodkodSolver {
 			free();
 		}
 		
-		Reducer.clearStatics();
 		return reducer.recompute(solution, b.universe(), this.options);
 	}
 
