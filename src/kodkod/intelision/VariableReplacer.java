@@ -60,7 +60,7 @@ class VariableReplacer implements ReturnVisitor<Node,Node,Node,Node>{
 
 	public  Node visit(IntConstant f) {
 		// TODO Auto-generated method stub
-		throw new RuntimeException("Not Implemented Yet.");
+		return f;
 	}
 
 	public  Node visit(IntToExprCast f) {
