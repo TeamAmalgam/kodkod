@@ -377,11 +377,11 @@ class Recompute {
 	}
 
 	public TemporaryTuple compute(SumExpression s, Tuple t) {
-		System.out.println("Evaluating " + s);
-		System.out.println("With instance: " + evaluator.instance());
+		//System.out.println("Evaluating " + s);
+		//System.out.println("With instance: " + evaluator.instance());
 		int result = evaluator.evaluate(s);
-		System.out.println("Evaluated " + s);
-		System.out.println("Got " + result);
+		//System.out.println("Evaluated " + s);
+		//System.out.println("Got " + result);
 
 		return new TemporaryTuple("", result);
 	}

@@ -86,14 +86,14 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 			final String answer =relation.toString();
 			if(swapAnswerPairs.containsKey(answer))
 			{
-				System.out.println("SwapAnswerPairs constains the answer.");
+				//System.out.println("SwapAnswerPairs constains the answer.");
 				final Expression e  = swapAnswerPairs.get(answer);//((Relation)binExpr.right()).name());
 				if(e instanceof IntToExprCast){
 					if(replace == Replace.INTCOMPARISON){
 						
 						IntExpression i =(IntExpression) ((IntToExprCast)e).intExpr();
 						Node returned = (Node)i.accept(new VariableReplacer(quantVariable));// binExpr.left());
-						System.out.println("Got returned " + returned);
+						//System.out.println("Got returned " + returned);
 						return returned;
 					}
 					else if(replace == Replace.COMPARISON){
@@ -104,7 +104,7 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 					throw new RuntimeException("Not Implemented Yet: " + e);
 				}
 			}
-			System.out.println("SwapAnswerPairs does not contain the answer.");
+			//System.out.println("SwapAnswerPairs does not contain the answer.");
 			return relation;
 			
 		}

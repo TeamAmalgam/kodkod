@@ -174,7 +174,7 @@ public final class IncrementalSolver implements KodkodSolver {
 			//System.out.println("Solving: " + f);
 			// This is the first formula so we need to run the full int reduction on it.
 		    Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
-		    System.out.println("SIZE: " + resultingFormulas.length);
+		    //System.out.println("SIZE: " + resultingFormulas.length);
 		    reducer.getEqualityConstants();
 		    reducer.recreateUniverseAndBounds(b);
 		    recreatedBounds = reducer.recreatedBounds;

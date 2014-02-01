@@ -83,7 +83,7 @@ class EqualityFinder extends AbstractVoidVisitor {
 		f.right().accept(this);
 		if(f.right().toString().equals(f.left().toString()) && f.right().toString().contains("Int/next")){
 			ier.addReduction(f,ier.reductions_delete );
-			System.out.println("EXACT: " + f.right());
+			//System.out.println("EXACT: " + f.right());
 		}
 		if(f.op() == ExprCompOperator.EQUALS && (f.left() instanceof IntToExprCast || f.right() instanceof IntToExprCast)){
 			
@@ -151,7 +151,7 @@ class EqualityFinder extends AbstractVoidVisitor {
 		f.left().accept(this);
 		f.right().accept(this);
 		intComparisonNodes.add(f);
-		System.out.println("Found int comparison: " + f);
+		//System.out.println("Found int comparison: " + f);
 	}
 	
 	public void visit(final QuantifiedFormula f)

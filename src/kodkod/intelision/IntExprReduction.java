@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import kodkod.ast.BinaryExpression;
 import kodkod.ast.ComparisonFormula;
@@ -34,6 +35,8 @@ public final class IntExprReduction {
 	private HashSet<String> bogusVariables = new HashSet<String>();//Relation>(); 
 	
 	public ArrayList<String> equalityIntConstants = new ArrayList<String>();
+	public ArrayList<String> claferMOOconstants = new ArrayList<String>();
+	public ArrayList<String> uniqueEqualityIntConstants = new ArrayList<String>();
 	
 	private Formula modifiedTree;
 	private boolean[] createNewTree;
@@ -144,7 +147,7 @@ public final class IntExprReduction {
 	}
 	
 	public void getEqualityConstants(){
-		System.out.println("Get Equality Ints");
+		//System.out.println("Get Equality Ints");
 		for(ComparisonFormula f : comparisonNodes){
 			if(f.left() instanceof IntToExprCast && ((IntToExprCast)f.left()).intExpr() instanceof IntConstant){
 				IntConstant c = (IntConstant)((IntToExprCast)f.left()).intExpr();
@@ -153,11 +156,47 @@ public final class IntExprReduction {
 			else if(f.right() instanceof IntToExprCast && ((IntToExprCast)f.right()).intExpr() instanceof IntConstant){
 				IntConstant c = (IntConstant)((IntToExprCast)f.right()).intExpr();
 				equalityIntConstants.add(c.toString());
-			}
+			}	
 		}
 		if(!equalityIntConstants.contains("0"))
 			equalityIntConstants.add("0");
+		HashSet<String> hs = new HashSet<String>();
+		hs.addAll(equalityIntConstants);
+		uniqueEqualityIntConstants.addAll(hs);
+		ArrayList<Integer> intList = new ArrayList<Integer>();
+		for(String s : equalityIntConstants)
+			intList.add(Integer.parseInt(s));
+		//System.out.println("PowerSet");
+		List<List<Integer>> powerList = powerSet(intList);
+		hs = new HashSet<String>();
+		for(List<Integer> i : powerList){
+			int sum = 0;
+			for(Integer j : i)
+				sum += j;
+			hs.add(sum+"");
+		}
+		claferMOOconstants.addAll(hs);
+		//System.out.println(claferMOOconstants);
 	}
+	
+	public List<List<Integer>> powerSet(List<Integer> originalSet) {
+        List<List<Integer>> sets = new ArrayList<List<Integer>>();
+        if (originalSet.isEmpty()) {
+            sets.add(new ArrayList<Integer>());
+            return sets;
+        }
+        List<Integer> list = new ArrayList<Integer>(originalSet);
+        Integer head = list.get(0);
+        List<Integer> rest = new ArrayList<Integer>(list.subList(1, list.size()));
+        for (List<Integer> set : powerSet(rest)) {
+            List<Integer> newSet = new ArrayList<Integer>();
+            newSet.add(head);
+            newSet.addAll(set);
+            sets.add(newSet);
+            sets.add(set);
+        }
+        return sets;
+    }
 	
 	public static boolean isInteger(String s) {
 	    try { 
@@ -213,7 +252,7 @@ public final class IntExprReduction {
 			Object atom = itr.next();
 			//System.out.println(atom);
 			if(isInteger(atom.toString())){
-				if(equalityIntConstants.contains(atom.toString())){
+				if(uniqueEqualityIntConstants.contains(atom.toString())){
 					newUniverseList.add(atom);
 				}
 			}
@@ -226,7 +265,7 @@ public final class IntExprReduction {
 		TupleFactory factory = newUniverse.factory();
 		//System.out.println("Relations");
 		for(Relation r : oldBounds.relations()){
-			System.out.println(r);
+			//System.out.println(r);
 			if(r.toString().contains("Int/next")){
 				//System.out.println("Eliding Int/next");
 				continue;
@@ -241,16 +280,16 @@ public final class IntExprReduction {
 			newBounds.bound(r, lowerTupleSet, upperTupleSet);
 		}
 		
-		for(String atom : equalityIntConstants){
+		for(String atom : uniqueEqualityIntConstants){
 			int i = Integer.parseInt(atom);
 			newBounds.boundExactly(i, factory.range(factory.tuple(atom),factory.tuple(atom)));
 		}
-		System.out.println("NEW BOUNDS");
+		//System.out.println("NEW BOUNDS");
 		//System.out.println(newBounds);
 		this.recreatedBounds = newBounds;
 		this.recreatedUniverse = newUniverse;
-		System.out.println(newBounds);
-		System.out.println(newUniverse);
+		//System.out.println(newBounds);
+		//System.out.println(newUniverse);
 		
 		
 	}
