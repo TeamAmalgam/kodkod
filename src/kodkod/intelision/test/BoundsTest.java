@@ -210,6 +210,7 @@ Formula x84=x10.eq(x10);
 
 IntExprReduction ier = new IntExprReduction();
 Formula[] formulas = ier.reduceIntExpressions(Formula.compose(FormulaOperator.AND,x12, x20, x23, x30, x32, x39, x41, x48, x50, x74, x75, x76, x79, x80, x81, x82, x83, x84));//x77, x78
+ier.recreateUniverseAndBounds(bounds);
 Formula x11=Formula.compose(FormulaOperator.AND, formulas);
 ier.solve(x11, bounds, factory, universe, 32); 
 

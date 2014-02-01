@@ -1,8 +1,11 @@
 package kodkod.intelision;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
 
 import kodkod.ast.BinaryExpression;
 import kodkod.ast.ComparisonFormula;
@@ -18,7 +21,9 @@ import kodkod.engine.Solver;
 import kodkod.engine.config.Options;
 import kodkod.engine.satlab.SATFactory;
 import kodkod.instance.Bounds;
+import kodkod.instance.Tuple;
 import kodkod.instance.TupleFactory;
+import kodkod.instance.TupleSet;
 import kodkod.instance.Universe;
 import kodkod.util.collections.IdentityHashSet;
 
@@ -28,8 +33,13 @@ public final class IntExprReduction {
 	private HashMap<String, Expression> swapAnswerPairs= new HashMap<String, Expression>();
 	private HashSet<String> bogusVariables = new HashSet<String>();//Relation>(); 
 	
+	public ArrayList<String> equalityIntConstants = new ArrayList<String>();
+	
 	private Formula modifiedTree;
 	private boolean[] createNewTree;
+	
+	public Universe recreatedUniverse = null;
+	public Bounds recreatedBounds = null;
 	
 	// TODO: make these not static
 	IdentityHashSet<Node> reductions_delete;
@@ -87,6 +97,7 @@ public final class IntExprReduction {
 			comparisonNodes.addAll(currentComparisonNodes);
 			intComparisonNodes.addAll(currentInequalityNodes);
 		}
+		//System.out.println("Comp Nodes: " + comparisonNodes + " " + intComparisonNodes);
 		for(final ComparisonFormula cf : comparisonNodes){
 			//the "independent side" of the comparison formula
 			final Expression arithmetic_expression;
@@ -130,6 +141,118 @@ public final class IntExprReduction {
 		
 		return formulas;
 	}
+	
+	public void getEqualityConstants(){
+		System.out.println("Get Equality Ints");
+		for(ComparisonFormula f : comparisonNodes){
+			if(f.left() instanceof IntToExprCast && ((IntToExprCast)f.left()).intExpr() instanceof IntConstant){
+				IntConstant c = (IntConstant)((IntToExprCast)f.left()).intExpr();
+				equalityIntConstants.add(c.toString());
+			}
+			else if(f.right() instanceof IntToExprCast && ((IntToExprCast)f.right()).intExpr() instanceof IntConstant){
+				IntConstant c = (IntConstant)((IntToExprCast)f.right()).intExpr();
+				equalityIntConstants.add(c.toString());
+			}
+		}
+		if(!equalityIntConstants.contains("0"))
+			equalityIntConstants.add("0");
+	}
+	
+	public static boolean isInteger(String s) {
+	    try { 
+	        Integer.parseInt(s); 
+	    } catch(NumberFormatException e) { 
+	        return false; 
+	    }
+	    // only got here if we didn't return false
+	    return true;
+	}
+	
+	
+	
+	public TupleSet createTupleSet(TupleSet old, TupleFactory factory, Relation r){
+		TupleSet tupleSet = factory.noneOf(r.arity());
+		Iterator<Tuple> tupleitr = old.iterator();
+		while(tupleitr.hasNext()){
+			Tuple t = tupleitr.next();
+			boolean elidedTuple = false;
+			List<String> atomList = new ArrayList<String>();
+			for(int i = 0; i < t.arity(); i++){
+				String atomStr = t.atom(i).toString();
+				atomList.add(atomStr);
+				if(isInteger(atomStr)){
+					if(!equalityIntConstants.contains(atomStr)){
+						System.out.println("Found elided");
+						elidedTuple = true;
+						break;
+					}
+				}
+			}
+			//create tuple with new universe factory
+			if(!elidedTuple){
+				Tuple tuple = factory.tuple(atomList);
+				tupleSet.add(tuple);
+			}
+		}
+		return tupleSet;
+	}
+	
+	public void recreateUniverseAndBounds(Bounds oldBounds){
+		//System.out.println("IN UTILITY");
+		//System.out.println(equalityIntConstants);
+		//System.out.println("BOUNDS");
+		//System.out.println(b);
+		//System.out.println("UNIVERSE");
+		//System.out.println(b.universe());
+		
+		Universe oldUniverse = oldBounds.universe();
+		Iterator<Object> itr = oldUniverse.iterator();
+		ArrayList<Object> newUniverseList = new ArrayList<Object>();
+		while(itr.hasNext()){
+			Object atom = itr.next();
+			if(isInteger(atom.toString())){
+				if(equalityIntConstants.contains(atom.toString())){
+					newUniverseList.add(atom);
+				}
+			}
+			else if(atom.toString().contains("Int/next")){
+				continue;
+			}
+			else
+				newUniverseList.add(atom);
+		}
+		//System.out.println("New Universe: " + newUniverseList);
+		Universe newUniverse = new Universe(newUniverseList);
+		Bounds newBounds = new Bounds(newUniverse);
+		TupleFactory factory = newUniverse.factory();
+		//System.out.println("Relations");
+		for(Relation r : oldBounds.relations()){
+			if(r.toString().contains("Int/next")){
+				//System.out.println("Eliding Int/next");
+				continue;
+			}
+			//System.out.println("relation");
+			//System.out.println(r);
+			//System.out.println(oldBounds.lowerBound(r));
+			TupleSet oldUpper = oldBounds.upperBound(r);
+			TupleSet upperTupleSet = createTupleSet(oldUpper, factory, r);
+			TupleSet oldLower = oldBounds.lowerBound(r);
+			TupleSet lowerTupleSet = createTupleSet(oldLower, factory, r);
+			newBounds.bound(r, lowerTupleSet, upperTupleSet);
+		}
+		
+		for(String atom : equalityIntConstants){
+			int i = Integer.parseInt(atom);
+			newBounds.boundExactly(i, factory.range(factory.tuple(atom),factory.tuple(atom)));
+		}
+		//System.out.println("NEW BOUNDS");
+		//System.out.println(newBounds);
+		this.recreatedBounds = newBounds;
+		this.recreatedUniverse = newUniverse;
+		
+		
+	}
+	
 	
 	public Formula reduceFormula(Formula f) {
 		ArithmeticStorageElider elider = new ArithmeticStorageElider(this, swapAnswerPairs);

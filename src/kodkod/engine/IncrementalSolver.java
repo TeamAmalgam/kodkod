@@ -161,6 +161,7 @@ public final class IncrementalSolver implements KodkodSolver {
 	 * @throws AbortedException this solving task has been aborted
 	 */
 	public Solution solve(Formula f, Bounds b) throws HigherOrderDeclException, UnboundLeafException, AbortedException {
+	    Bounds recreatedBounds = null;
 		if (outcome==Boolean.FALSE)
 			throw new IllegalStateException("Cannot use this solver since a prior call to solve(...) produced an UNSAT solution.");
 
@@ -169,24 +170,27 @@ public final class IncrementalSolver implements KodkodSolver {
 	
 
 		if (translation == null) {
-			System.out.println("Initial Solve");
-			System.out.println("Solving: " + f);
+		    //System.out.println("Initial Solve");
+			//System.out.println("Solving: " + f);
 			// This is the first formula so we need to run the full int reduction on it.
-			Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
+		    Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
+		    reducer.getEqualityConstants();
+		    reducer.recreateUniverseAndBounds(b);
+		    recreatedBounds = reducer.recreatedBounds;
 			f = Formula.compose(FormulaOperator.AND, resultingFormulas);
-			System.out.println("By Solving: " + f);
+			//System.out.println("By Solving: " + f);
 		} else {
-			System.out.println("Additional Solve");
-			System.out.println("Solving: " + f);
+		    //System.out.println("Additional Solve");
+		    //System.out.println("Solving: " + f);
 			// This is an additional constraint so we only need to run the substitutions on it.
 			f = reducer.reduceFormula(f);
-			System.out.println("By Solving: " + f);
+			//System.out.println("By Solving: " + f);
 		}
 
 		final Solution solution;
 		try {			
 			final long startTransl = System.currentTimeMillis();
-			translation = translation==null ? Translator.translateIncremental(f, b, options) : Translator.translateIncremental(f, b, translation);
+			translation = translation==null ? Translator.translateIncremental(f, recreatedBounds, options) : Translator.translateIncremental(f, recreatedBounds, translation);
 			final long endTransl = System.currentTimeMillis();
 			
 			if (translation.trivial()) {
