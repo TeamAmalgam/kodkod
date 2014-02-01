@@ -302,8 +302,8 @@ public final class IntExprReduction {
 		//System.out.println("UNIVERSE");
 		//System.out.println(b.universe());
 		
-		//ArrayList<String> experimentInts = this.claferMOOconstants;
-		System.out.println(this.claferMOOconstants);
+		ArrayList<String> experimentInts = this.claferMOOconstants;
+		//System.out.println(this.claferMOOconstants);
 		//ArrayList<String> experimentInts = this.equalityIntConstants;
 		
 		Universe oldUniverse = oldBounds.universe();
