@@ -33,6 +33,7 @@ public final class IntExprReduction {
 	//  get rid of int/next relation around line 275
 	//  change the intconsts around line 250
 	//  comment lines where f is modified in incremental solver
+	//  uncomment powerset stuff
 	
 	private HashSet<ComparisonFormula> comparisonNodes = new HashSet<ComparisonFormula>();
 	private HashSet<IntComparisonFormula> intComparisonNodes = new HashSet<IntComparisonFormula>();
@@ -171,6 +172,7 @@ public final class IntExprReduction {
 		ArrayList<Integer> intList = new ArrayList<Integer>();
 		for(String s : equalityIntConstants)
 			intList.add(Integer.parseInt(s));
+		/*
 		Iterator<BitSet> itr = PowerSet.iteratePowerSet(equalityIntConstants.size());
 		
 		while(itr.hasNext()){
@@ -183,6 +185,9 @@ public final class IntExprReduction {
 			claferMOOconstants.add(sum + "");
 			
 		}
+		*/
+		
+		
 		//System.out.println("PowerSet");
 		/*
 		List<List<Integer>> powerList = powerSet(intList);
