@@ -33,6 +33,7 @@ import kodkod.engine.satlab.SATFactory;
 import kodkod.engine.satlab.SATSolver;
 import kodkod.instance.Bounds;
 import kodkod.instance.Universe;
+import kodkod.intelision.IntExprReduction;
 
 import java.util.Stack;
 
@@ -62,6 +63,7 @@ public final class CheckpointedSolver implements KodkodSolver {
 	private final Options options;
 	private Translation.Checkpointed translation;
 	private Boolean outcome;
+  private IntExprReduction reducer;
 
 	private Stack<Boolean> outcomeCheckpoints;	
 	private Stack<Translation.Checkpointed> translationCheckpoints;
@@ -74,6 +76,8 @@ public final class CheckpointedSolver implements KodkodSolver {
 	private CheckpointedSolver(Options options) { 
 		this.options = options;
 		this.outcome = null;
+    this.reducer = new IntExprReduction();
+
 		this.outcomeCheckpoints = new Stack<Boolean>();
 		this.translationCheckpoints = new Stack<Translation.Checkpointed>();
 	}
@@ -119,12 +123,26 @@ public final class CheckpointedSolver implements KodkodSolver {
 	 * @throws AbortedException this solving task has been aborted
 	 */
 	public Solution solve(Formula f, Bounds b) throws HigherOrderDeclException, UnboundLeafException, AbortedException {
+    Bounds recreatedBounds = null;
 		if (outcome==Boolean.FALSE)
 			throw new IllegalStateException("Cannot use this solver since a prior call to solve(...) produced an UNSAT solution.");
 
 		if (outcome != null && translation==null) 
 			throw new IllegalStateException("Cannot use this solver since a prior call to solve(...) resulted in an exception.");
-		
+	
+    if (translation == null) {
+      Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
+      reducer.getEqualityConstants();
+      reducer.recreateUniverseAndBounds(b);
+      recreatedBounds = reducer.recreatedBounds;
+
+      // f = Formula.compose(FormulaOperator.AND, resultingFormulas);
+    } else {
+
+      // f = reducer.reduceFormula(f);
+      recreatedBounds = new Bounds(reducer.recreatedBounds.universe());
+    }
+
 		final Solution solution;
 		try {			
 			final long startTransl = System.currentTimeMillis();
@@ -167,7 +185,7 @@ public final class CheckpointedSolver implements KodkodSolver {
 			outcome = Boolean.FALSE;
 		}
 
-		return solution;
+		return reducer.recompute(solution, recreatedBounds.universe(), this.options);
 	}
 
 	/**
