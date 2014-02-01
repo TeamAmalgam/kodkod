@@ -167,6 +167,7 @@ public final class IntExprReduction {
 		for(String s : equalityIntConstants)
 			intList.add(Integer.parseInt(s));
 		//System.out.println("PowerSet");
+		/*
 		List<List<Integer>> powerList = powerSet(intList);
 		hs = new HashSet<String>();
 		for(List<Integer> i : powerList){
@@ -177,6 +178,8 @@ public final class IntExprReduction {
 		}
 		claferMOOconstants.addAll(hs);
 		//System.out.println(claferMOOconstants);
+		 
+		 */
 	}
 	
 	public List<List<Integer>> powerSet(List<Integer> originalSet) {
@@ -245,7 +248,8 @@ public final class IntExprReduction {
 		//System.out.println("UNIVERSE");
 		//System.out.println(b.universe());
 		
-		ArrayList<String> experimentInts = this.claferMOOconstants;
+		//ArrayList<String> experimentInts = this.claferMOOconstants;
+		ArrayList<String> experimentInts = this.equalityIntConstants;
 		
 		Universe oldUniverse = oldBounds.universe();
 		Iterator<Object> itr = oldUniverse.iterator();

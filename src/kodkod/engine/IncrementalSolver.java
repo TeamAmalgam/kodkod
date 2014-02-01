@@ -173,16 +173,21 @@ public final class IncrementalSolver implements KodkodSolver {
 		    //System.out.println("Initial Solve");
 			//System.out.println("Solving: " + f);
 			// This is the first formula so we need to run the full int reduction on it.
+		    System.out.println("Hit4");
 		    Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
+		    System.out.println("Hit3");
 		    //System.out.println("SIZE: " + resultingFormulas.length);
 		    reducer.getEqualityConstants();
 		    reducer.recreateUniverseAndBounds(b);
 		    recreatedBounds = reducer.recreatedBounds;
 		    //System.out.println("Bounds : " + recreatedBounds);
 		    //System.out.println("OldBounds : " + b);
+		    
 		    f = Formula.compose(FormulaOperator.AND, resultingFormulas);
 			//System.out.println("By Solving: " + f);
+		    System.out.println("HIT");
 		} else {
+		    System.out.println("HIT2");
 		    //System.out.println("Additional Solve");
 		    //System.out.println("Solving: " + f);
 			// This is an additional constraint so we only need to run the substitutions on it.
