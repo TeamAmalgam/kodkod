@@ -245,7 +245,7 @@ public final class IntExprReduction {
 		//System.out.println("UNIVERSE");
 		//System.out.println(b.universe());
 		
-		ArrayList<String> experimentInts = this.uniqueEqualityIntConstants;
+		ArrayList<String> experimentInts = this.claferMOOconstants;
 		
 		Universe oldUniverse = oldBounds.universe();
 		Iterator<Object> itr = oldUniverse.iterator();
