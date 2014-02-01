@@ -40,7 +40,7 @@ public final class MultiObjectiveSolver implements KodkodSolver {
 
 		solutionQueue = new LinkedBlockingQueue<Solution>();
 		solutionIterator = new BlockingSolutionIterator(solutionQueue);
-		algorithm = new OverlappingGuidedImprovementAlgorithm("OGIA", options);
+		algorithm = new IncrementalGuidedImprovementAlgorithm("IGIA", options);
 		solutionNotifier = new TranslatingBlockingQueueSolutionNotifier(solutionQueue);
 	}
 	
