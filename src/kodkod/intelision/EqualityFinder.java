@@ -25,6 +25,7 @@ class EqualityFinder extends AbstractVoidVisitor {
 	final IdentityHashSet<ComparisonFormula> comparisonNodes = new IdentityHashSet<ComparisonFormula>();
 	final IdentityHashSet<IntComparisonFormula> intComparisonNodes = new IdentityHashSet<IntComparisonFormula>();
 	
+	boolean trustEqualities = true;
 	
 	private Expression quantExpression;
 	private String multiplicity; 
@@ -79,6 +80,9 @@ class EqualityFinder extends AbstractVoidVisitor {
 	
 	public void visit(final ComparisonFormula f)
 	{
+		if(!trustEqualities)
+			return;
+		
 		f.left().accept(this);
 		f.right().accept(this);
 		if(f.right().toString().equals(f.left().toString()) && f.right().toString().contains("Int/next")){
@@ -125,12 +129,18 @@ class EqualityFinder extends AbstractVoidVisitor {
 	}
 	
 	public void visit(NaryFormula formula){
+		boolean outermost = false;
 		if(formula.op() != FormulaOperator.AND){
-			System.out.println("NaryFormula only works with AND currently.");
-			System.exit(1);
+			if(trustEqualities)
+				outermost = true;
+			trustEqualities = false;
+			//System.out.println("NaryFormula only works with AND currently.");
+			//System.exit(1);
 		}
 		for(int i = 0; i < formula.size(); i++)
 			formula.child(i).accept(this);
+		if(outermost)
+			trustEqualities = true;
 	}
 
 	// TODO: rewrite this myToString() method

@@ -29,6 +29,11 @@ import kodkod.instance.Universe;
 import kodkod.util.collections.IdentityHashSet;
 
 public final class IntExprReduction {
+	//NOTES for changing between experiments:
+	//  get rid of int/next relation around line 275
+	//  change the intconsts around line 250
+	//  comment lines where f is modified in incremental solver
+	
 	private HashSet<ComparisonFormula> comparisonNodes = new HashSet<ComparisonFormula>();
 	private HashSet<IntComparisonFormula> intComparisonNodes = new HashSet<IntComparisonFormula>();
 	private HashMap<String, Expression> swapAnswerPairs= new HashMap<String, Expression>();
@@ -243,9 +248,9 @@ public final class IntExprReduction {
 		//System.out.println("UNIVERSE");
 		//System.out.println(b.universe());
 		
-		ArrayList<String> experimentInts = this.claferMOOconstants;
-		System.out.println(this.claferMOOconstants);
-		//ArrayList<String> experimentInts = this.equalityIntConstants;
+		//ArrayList<String> experimentInts = this.claferMOOconstants;
+		//System.out.println(this.claferMOOconstants);
+		ArrayList<String> experimentInts = this.equalityIntConstants;
 		
 		Universe oldUniverse = oldBounds.universe();
 		Iterator<Object> itr = oldUniverse.iterator();
