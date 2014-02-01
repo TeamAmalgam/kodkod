@@ -27,6 +27,9 @@ import kodkod.instance.TupleFactory;
 import kodkod.instance.TupleSet;
 import kodkod.instance.Universe;
 import kodkod.util.collections.IdentityHashSet;
+import kodkod.util.ints.IntSet;
+import kodkod.util.ints.IntTreeSet;
+import kodkod.util.ints.IntIterator;
 
 public final class IntExprReduction {
 	//NOTES for changing between experiments:
@@ -152,6 +155,48 @@ public final class IntExprReduction {
 		return formulas;
 	}
 	
+
+	public List<String> allSums(List<String> ints) {
+		System.out.println("Finding all sums of: ");
+		IntSet masterSet = new IntTreeSet();
+		IntSet[] sets = new IntSet[ints.size()]; // Each set contains the sums with the index + 1 number of terms.
+
+		sets[0] = new IntTreeSet();
+		for (String i : ints) {
+			System.out.println("\t" + i);
+			sets[0].add(Integer.parseInt(i));
+			masterSet.add(Integer.parseInt(i));
+		}
+
+		for (int i = 1; i < sets[0].size(); i += 1) {
+			System.out.println("Iteration " + i);
+			IntSet currentSet = new IntTreeSet();
+
+			IntIterator beginningIterator = sets[0].iterator();
+
+			while (beginningIterator.hasNext()) {
+				int j = beginningIterator.next();
+				IntIterator lastIterator = sets[i - 1].iterator();
+				while (lastIterator.hasNext()) {
+					int k = lastIterator.next();
+
+					currentSet.add(j + k);
+					masterSet.add(j + k);
+				}
+			}
+
+			sets[i] = currentSet;
+		}
+
+		ArrayList<String> toReturn = new ArrayList<String>(masterSet.size());
+		IntIterator masterIterator = masterSet.iterator();
+		while (masterIterator.hasNext()) {
+			toReturn.add(masterIterator.next() + "");
+		}
+
+		return toReturn;
+	}
+
 	public void getEqualityConstants(){
 		//System.out.println("Get Equality Ints");
 		for(ComparisonFormula f : comparisonNodes){
@@ -172,6 +217,10 @@ public final class IntExprReduction {
 		ArrayList<Integer> intList = new ArrayList<Integer>();
 		for(String s : equalityIntConstants)
 			intList.add(Integer.parseInt(s));
+
+		System.out.println("Calculating moo ints.");
+		claferMOOconstants = (ArrayList<String>)allSums(equalityIntConstants);
+		System.out.println("Found " + claferMOOconstants.size() + " ints");
 		/*
 		Iterator<BitSet> itr = PowerSet.iteratePowerSet(equalityIntConstants.size());
 		
