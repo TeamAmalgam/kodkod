@@ -30,6 +30,7 @@ import kodkod.util.collections.IdentityHashSet;
 import kodkod.util.ints.IntSet;
 import kodkod.util.ints.IntTreeSet;
 import kodkod.util.ints.IntIterator;
+import kodkod.util.ints.ArrayIntVector;
 
 public final class IntExprReduction {
 	//NOTES for changing between experiments:
@@ -156,42 +157,51 @@ public final class IntExprReduction {
 	}
 	
 
+	public IntSet allSumsInt(ArrayIntVector ints) {
+		IntSet toReturn = new IntTreeSet();
+
+		if (ints.size() == 1) {
+			toReturn.add(ints.get(0));
+			return toReturn;
+		} else if (ints.size() == 0) {
+			return toReturn;
+		}
+
+		int head = ints.get(0);
+		ArrayIntVector tail = new ArrayIntVector(ints.size() - 1);
+
+		IntIterator it = ints.iterator();
+		it.next();
+		while(it.hasNext()) {
+			tail.add(it.next());
+		}
+
+		IntSet result = allSumsInt(tail);
+
+		it = result.iterator();
+		while(it.hasNext()) {
+			int current = it.next();
+			toReturn.add(current + head);
+			toReturn.add(current);
+		}
+
+		System.out.println("Largest int found is: " + toReturn.max());
+		return toReturn;
+	}
+
 	public List<String> allSums(List<String> ints) {
-		System.out.println("Finding all sums of: ");
-		IntSet masterSet = new IntTreeSet();
-		IntSet[] sets = new IntSet[ints.size()]; // Each set contains the sums with the index + 1 number of terms.
+		ArrayIntVector convertedInts = new ArrayIntVector(ints.size());
 
-		sets[0] = new IntTreeSet();
 		for (String i : ints) {
-			System.out.println("\t" + i);
-			sets[0].add(Integer.parseInt(i));
-			masterSet.add(Integer.parseInt(i));
+			convertedInts.add(Integer.parseInt(i));
 		}
 
-		for (int i = 1; i < sets[0].size(); i += 1) {
-			System.out.println("Iteration " + i);
-			IntSet currentSet = new IntTreeSet();
+		IntSet result = allSumsInt(convertedInts);
+		List<String> toReturn = new ArrayList<String>(result.size());
 
-			IntIterator beginningIterator = sets[0].iterator();
-
-			while (beginningIterator.hasNext()) {
-				int j = beginningIterator.next();
-				IntIterator lastIterator = sets[i - 1].iterator();
-				while (lastIterator.hasNext()) {
-					int k = lastIterator.next();
-
-					currentSet.add(j + k);
-					masterSet.add(j + k);
-				}
-			}
-
-			sets[i] = currentSet;
-		}
-
-		ArrayList<String> toReturn = new ArrayList<String>(masterSet.size());
-		IntIterator masterIterator = masterSet.iterator();
-		while (masterIterator.hasNext()) {
-			toReturn.add(masterIterator.next() + "");
+		IntIterator it = result.iterator();
+		while (it.hasNext()) {
+			toReturn.add(it.next() + "");
 		}
 
 		return toReturn;
