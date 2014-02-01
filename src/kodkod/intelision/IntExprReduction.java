@@ -1,12 +1,12 @@
 package kodkod.intelision;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import kodkod.ast.BinaryExpression;
 import kodkod.ast.ComparisonFormula;
@@ -166,6 +166,18 @@ public final class IntExprReduction {
 		ArrayList<Integer> intList = new ArrayList<Integer>();
 		for(String s : equalityIntConstants)
 			intList.add(Integer.parseInt(s));
+		Iterator<BitSet> itr = PowerSet.iteratePowerSet(equalityIntConstants.size());
+		
+		while(itr.hasNext()){
+			BitSet b = itr.next();
+			int sum = 0;
+			for(int i = 0; i < b.length(); i++){
+				if(b.get(i))
+					sum += Integer.parseInt(equalityIntConstants.get(i));
+			}
+			claferMOOconstants.add(sum + "");
+			
+		}
 		//System.out.println("PowerSet");
 		/*
 		List<List<Integer>> powerList = powerSet(intList);
@@ -182,24 +194,7 @@ public final class IntExprReduction {
 		 */
 	}
 	
-	public List<List<Integer>> powerSet(List<Integer> originalSet) {
-        List<List<Integer>> sets = new ArrayList<List<Integer>>();
-        if (originalSet.isEmpty()) {
-            sets.add(new ArrayList<Integer>());
-            return sets;
-        }
-        List<Integer> list = new ArrayList<Integer>(originalSet);
-        Integer head = list.get(0);
-        List<Integer> rest = new ArrayList<Integer>(list.subList(1, list.size()));
-        for (List<Integer> set : powerSet(rest)) {
-            List<Integer> newSet = new ArrayList<Integer>();
-            newSet.add(head);
-            newSet.addAll(set);
-            sets.add(newSet);
-            sets.add(set);
-        }
-        return sets;
-    }
+	
 	
 	public static boolean isInteger(String s) {
 	    try { 
@@ -248,8 +243,9 @@ public final class IntExprReduction {
 		//System.out.println("UNIVERSE");
 		//System.out.println(b.universe());
 		
-		//ArrayList<String> experimentInts = this.claferMOOconstants;
-		ArrayList<String> experimentInts = this.equalityIntConstants;
+		ArrayList<String> experimentInts = this.claferMOOconstants;
+		System.out.println(this.claferMOOconstants);
+		//ArrayList<String> experimentInts = this.equalityIntConstants;
 		
 		Universe oldUniverse = oldBounds.universe();
 		Iterator<Object> itr = oldUniverse.iterator();
