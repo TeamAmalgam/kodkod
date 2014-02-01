@@ -245,6 +245,8 @@ public final class IntExprReduction {
 		//System.out.println("UNIVERSE");
 		//System.out.println(b.universe());
 		
+		ArrayList<String> experimentInts = this.uniqueEqualityIntConstants;
+		
 		Universe oldUniverse = oldBounds.universe();
 		Iterator<Object> itr = oldUniverse.iterator();
 		ArrayList<Object> newUniverseList = new ArrayList<Object>();
@@ -252,7 +254,7 @@ public final class IntExprReduction {
 			Object atom = itr.next();
 			//System.out.println(atom);
 			if(isInteger(atom.toString())){
-				if(uniqueEqualityIntConstants.contains(atom.toString())){
+				if(experimentInts.contains(atom.toString()) && !newUniverseList.contains(atom.toString())){
 					newUniverseList.add(atom);
 				}
 			}
@@ -280,7 +282,7 @@ public final class IntExprReduction {
 			newBounds.bound(r, lowerTupleSet, upperTupleSet);
 		}
 		
-		for(String atom : uniqueEqualityIntConstants){
+		for(String atom : experimentInts){
 			int i = Integer.parseInt(atom);
 			newBounds.boundExactly(i, factory.range(factory.tuple(atom),factory.tuple(atom)));
 		}
