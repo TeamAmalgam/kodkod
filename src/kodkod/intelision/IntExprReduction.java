@@ -178,6 +178,8 @@ public final class IntExprReduction {
 
 		IntSet result = allSumsInt(tail);
 
+		toReturn.add(head);
+
 		it = result.iterator();
 		while(it.hasNext()) {
 			int current = it.next();
