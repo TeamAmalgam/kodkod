@@ -221,6 +221,37 @@ public final class IntExprReduction {
 		System.out.println("Calculating moo ints.");
 		claferMOOconstants = (ArrayList<String>)allSums(equalityIntConstants);
 		System.out.println("Found " + claferMOOconstants.size() + " ints");
+		//System.out.println(claferMOOconstants);
+		
+		HashSet<Integer> mooSet = new HashSet<Integer>();
+		for(Integer i : intList)
+			mooSet.add(i);
+		ArrayList<Integer> finalList = new ArrayList<Integer>();
+		for(Integer i : intList)
+			finalList.add(i);
+		for(int i = 0; i < intList.size(); i++){
+			int max = finalList.size();
+			for(int j = i + 1; j < max; j++)
+			{
+				Integer k = finalList.get(j) + intList.get(i);
+				if(!mooSet.contains(k)){
+					if (k == 0)
+						System.out.println("WTF");
+					mooSet.add(k);
+					finalList.add(k);
+				}
+			}
+		}
+		finalList.clear();
+		finalList.addAll(mooSet);
+		claferMOOconstants.clear();
+		for(Integer i : finalList)
+			claferMOOconstants.add(i + "");
+		//System.out.println("finallist: " + claferMOOconstants);
+		System.out.println("Found " + claferMOOconstants.size() + " ints");
+		//claferMOOconstants = finalList;
+		
+		
 		/*
 		Iterator<BitSet> itr = PowerSet.iteratePowerSet(equalityIntConstants.size());
 		
