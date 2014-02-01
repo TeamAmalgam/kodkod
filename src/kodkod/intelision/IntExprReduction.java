@@ -268,10 +268,10 @@ public final class IntExprReduction {
 		//System.out.println("Relations");
 		for(Relation r : oldBounds.relations()){
 			//System.out.println(r);
-			//if(r.toString().contains("Int/next")){
+			if(r.toString().contains("Int/next")){
 				//System.out.println("Eliding Int/next");
-			//	continue;
-			//}
+				continue;
+			}
 			//System.out.println("relation");
 			//System.out.println(r);
 			//System.out.println(oldBounds.lowerBound(r));
