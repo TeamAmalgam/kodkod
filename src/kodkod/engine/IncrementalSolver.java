@@ -174,6 +174,7 @@ public final class IncrementalSolver implements KodkodSolver {
 			//System.out.println("Solving: " + f);
 			// This is the first formula so we need to run the full int reduction on it.
 		    Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
+		    System.out.println("SIZE: " + resultingFormulas.length);
 		    reducer.getEqualityConstants();
 		    reducer.recreateUniverseAndBounds(b);
 		    recreatedBounds = reducer.recreatedBounds;
@@ -184,6 +185,8 @@ public final class IncrementalSolver implements KodkodSolver {
 		    //System.out.println("Solving: " + f);
 			// This is an additional constraint so we only need to run the substitutions on it.
 			f = reducer.reduceFormula(f);
+			//reducer.recreateUniverseAndBounds(b);
+			recreatedBounds = new Bounds(reducer.recreatedBounds.universe());//reducer.recreatedBounds;
 			//System.out.println("By Solving: " + f);
 		}
 
@@ -230,7 +233,7 @@ public final class IncrementalSolver implements KodkodSolver {
 			free();
 		}
 		
-		return reducer.recompute(solution, b.universe(), this.options);
+		return reducer.recompute(solution, recreatedBounds.universe(), this.options);
 	}
 
 	/**

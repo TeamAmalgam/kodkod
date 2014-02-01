@@ -72,7 +72,7 @@ public final class IntExprReduction {
 
 	//adds AST node to proper reductions set, making sure to remove it from any others first
 	//the removal checks can be deleted eventually
-	private void addReduction(Node n, IdentityHashSet<Node> set){
+	public void addReduction(Node n, IdentityHashSet<Node> set){
 		reductions_delete.remove(n);
 		reductions_replace.remove(n);
 		reductions_swapVariables.remove(n);
@@ -99,6 +99,7 @@ public final class IntExprReduction {
 		}
 		//System.out.println("Comp Nodes: " + comparisonNodes + " " + intComparisonNodes);
 		for(final ComparisonFormula cf : comparisonNodes){
+			
 			//the "independent side" of the comparison formula
 			final Expression arithmetic_expression;
 			if(cf.right() instanceof BinaryExpression || cf.right() instanceof Relation){
@@ -182,7 +183,7 @@ public final class IntExprReduction {
 				atomList.add(atomStr);
 				if(isInteger(atomStr)){
 					if(!equalityIntConstants.contains(atomStr)){
-						System.out.println("Found elided");
+						//System.out.println("Found elided");
 						elidedTuple = true;
 						break;
 					}
@@ -210,13 +211,11 @@ public final class IntExprReduction {
 		ArrayList<Object> newUniverseList = new ArrayList<Object>();
 		while(itr.hasNext()){
 			Object atom = itr.next();
+			//System.out.println(atom);
 			if(isInteger(atom.toString())){
 				if(equalityIntConstants.contains(atom.toString())){
 					newUniverseList.add(atom);
 				}
-			}
-			else if(atom.toString().contains("Int/next")){
-				continue;
 			}
 			else
 				newUniverseList.add(atom);
@@ -227,6 +226,7 @@ public final class IntExprReduction {
 		TupleFactory factory = newUniverse.factory();
 		//System.out.println("Relations");
 		for(Relation r : oldBounds.relations()){
+			System.out.println(r);
 			if(r.toString().contains("Int/next")){
 				//System.out.println("Eliding Int/next");
 				continue;
@@ -245,10 +245,12 @@ public final class IntExprReduction {
 			int i = Integer.parseInt(atom);
 			newBounds.boundExactly(i, factory.range(factory.tuple(atom),factory.tuple(atom)));
 		}
-		//System.out.println("NEW BOUNDS");
+		System.out.println("NEW BOUNDS");
 		//System.out.println(newBounds);
 		this.recreatedBounds = newBounds;
 		this.recreatedUniverse = newUniverse;
+		System.out.println(newBounds);
+		System.out.println(newUniverse);
 		
 		
 	}

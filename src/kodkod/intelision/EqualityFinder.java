@@ -81,6 +81,10 @@ class EqualityFinder extends AbstractVoidVisitor {
 	{
 		f.left().accept(this);
 		f.right().accept(this);
+		if(f.right().toString().equals(f.left().toString()) && f.right().toString().contains("Int/next")){
+			ier.addReduction(f,ier.reductions_delete );
+			System.out.println("EXACT: " + f.right());
+		}
 		if(f.op() == ExprCompOperator.EQUALS && (f.left() instanceof IntToExprCast || f.right() instanceof IntToExprCast)){
 			
 			
