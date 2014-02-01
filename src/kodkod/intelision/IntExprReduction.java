@@ -210,7 +210,7 @@ public final class IntExprReduction {
 	
 	
 	
-	public TupleSet createTupleSet(TupleSet old, TupleFactory factory, Relation r){
+	public TupleSet createTupleSet(TupleSet old, TupleFactory factory, Relation r, ArrayList<String> experimentInts){
 		TupleSet tupleSet = factory.noneOf(r.arity());
 		Iterator<Tuple> tupleitr = old.iterator();
 		while(tupleitr.hasNext()){
@@ -221,7 +221,7 @@ public final class IntExprReduction {
 				String atomStr = t.atom(i).toString();
 				atomList.add(atomStr);
 				if(isInteger(atomStr)){
-					if(!equalityIntConstants.contains(atomStr)){
+					if(!experimentInts.contains(atomStr)){
 						//System.out.println("Found elided");
 						elidedTuple = true;
 						break;
@@ -268,18 +268,23 @@ public final class IntExprReduction {
 		//System.out.println("Relations");
 		for(Relation r : oldBounds.relations()){
 			//System.out.println(r);
-			if(r.toString().contains("Int/next")){
+			//if(r.toString().contains("Int/next")){
 				//System.out.println("Eliding Int/next");
-				continue;
-			}
+			//	continue;
+			//}
 			//System.out.println("relation");
 			//System.out.println(r);
 			//System.out.println(oldBounds.lowerBound(r));
 			TupleSet oldUpper = oldBounds.upperBound(r);
-			TupleSet upperTupleSet = createTupleSet(oldUpper, factory, r);
+			TupleSet upperTupleSet = createTupleSet(oldUpper, factory, r, experimentInts);
 			TupleSet oldLower = oldBounds.lowerBound(r);
-			TupleSet lowerTupleSet = createTupleSet(oldLower, factory, r);
+			TupleSet lowerTupleSet = createTupleSet(oldLower, factory, r, experimentInts);
 			newBounds.bound(r, lowerTupleSet, upperTupleSet);
+			//if(r.toString().contains("Int/next")){
+			//	System.out.println("Eliding Int/next");
+			//	System.out.println(upperTupleSet);
+			//	System.out.println(lowerTupleSet);
+			//}
 		}
 		
 		for(String atom : experimentInts){

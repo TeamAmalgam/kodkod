@@ -178,6 +178,8 @@ public final class IncrementalSolver implements KodkodSolver {
 		    reducer.getEqualityConstants();
 		    reducer.recreateUniverseAndBounds(b);
 		    recreatedBounds = reducer.recreatedBounds;
+		    //System.out.println("Bounds : " + recreatedBounds);
+		    //System.out.println("OldBounds : " + b);
 		    //f = Formula.compose(FormulaOperator.AND, resultingFormulas);
 			//System.out.println("By Solving: " + f);
 		} else {
@@ -187,6 +189,7 @@ public final class IncrementalSolver implements KodkodSolver {
 			//f = reducer.reduceFormula(f);
 			//reducer.recreateUniverseAndBounds(b);
 			recreatedBounds = new Bounds(reducer.recreatedBounds.universe());//reducer.recreatedBounds;
+			//System.out.println("Bounds : " + recreatedBounds);
 			//System.out.println("By Solving: " + f);
 		}
 
