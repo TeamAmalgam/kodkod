@@ -230,9 +230,9 @@ public final class IntExprReduction {
 		for(String s : equalityIntConstants)
 			intList.add(Integer.parseInt(s));
 
-		System.out.println("Calculating moo ints.");
-		claferMOOconstants = (ArrayList<String>)allSums(equalityIntConstants);
-		System.out.println("Found " + claferMOOconstants.size() + " ints");
+		//System.out.println("Calculating moo ints.");
+		//claferMOOconstants = (ArrayList<String>)allSums(equalityIntConstants);
+		//System.out.println("Found " + claferMOOconstants.size() + " ints");
 		//System.out.println(claferMOOconstants);
 		/*
 		HashSet<Integer> mooSet = new HashSet<Integer>();
@@ -345,9 +345,9 @@ public final class IntExprReduction {
 		//System.out.println("UNIVERSE");
 		//System.out.println(b.universe());
 		
-		ArrayList<String> experimentInts = this.claferMOOconstants;
+		//ArrayList<String> experimentInts = this.claferMOOconstants;
 		//System.out.println(this.claferMOOconstants);
-		//ArrayList<String> experimentInts = this.equalityIntConstants;
+		ArrayList<String> experimentInts = this.equalityIntConstants;
 		
 		Universe oldUniverse = oldBounds.universe();
 		Iterator<Object> itr = oldUniverse.iterator();
@@ -370,10 +370,10 @@ public final class IntExprReduction {
 		//System.out.println("Relations");
 		for(Relation r : oldBounds.relations()){
 			//System.out.println(r);
-			//if(r.toString().contains("Int/next")){
+			if(r.toString().contains("Int/next")){
 				//System.out.println("Eliding Int/next");
-			//	continue;
-			//}
+				continue;
+			}
 			//System.out.println("relation");
 			//System.out.println(r);
 			//System.out.println(oldBounds.lowerBound(r));
