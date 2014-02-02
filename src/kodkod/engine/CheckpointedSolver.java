@@ -34,6 +34,7 @@ import kodkod.engine.satlab.SATSolver;
 import kodkod.instance.Bounds;
 import kodkod.instance.Universe;
 import kodkod.intelision.IntExprReduction;
+import kodkod.ast.operator.FormulaOperator;
 
 import java.util.Stack;
 
@@ -136,10 +137,10 @@ public final class CheckpointedSolver implements KodkodSolver {
       reducer.recreateUniverseAndBounds(b);
       recreatedBounds = reducer.recreatedBounds;
 
-      // f = Formula.compose(FormulaOperator.AND, resultingFormulas);
+      f = Formula.compose(FormulaOperator.AND, resultingFormulas);
     } else {
 
-      // f = reducer.reduceFormula(f);
+      f = reducer.reduceFormula(f);
       recreatedBounds = new Bounds(reducer.recreatedBounds.universe());
     }
 
