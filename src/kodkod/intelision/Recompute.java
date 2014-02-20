@@ -197,8 +197,13 @@ class Recompute {
 					Tuple newTuple;
 					if(ts.arity() == 1)
 						newTuple = newUniverse.factory().tuple(next.atom(0));
-					else
+          else if (ts.arity() == 2)
 						newTuple = newUniverse.factory().tuple(next.atom(0), next.atom(1));
+          else if (ts.arity() == 3)
+            newTuple = newUniverse.factory().tuple(next.atom(0), next.atom(1), next.atom(2));
+          else
+            throw new RuntimeException("Not implemented yet for arity: " + ts.arity());
+
 					newTupleSet.add(newTuple);
 					
 					
