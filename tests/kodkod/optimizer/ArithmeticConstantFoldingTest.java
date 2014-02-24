@@ -627,4 +627,100 @@ public class ArithmeticConstantFoldingTest {
         assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
         assertEquals("The ors should be folded.", expected_f.toString(), result.getFormula().toString());
     }
+
+    @Test
+    public void simpleNaryAddFolding2() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntExpression.plus(
+                                            IntConstant.constant(1),
+                                            IntConstant.constant(2),
+                                            r2.apply(ExprCastOperator.SUM)
+                                        ).toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(3).plus(
+                                       r2.apply(ExprCastOperator.SUM)).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The adds should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+    @Test
+    public void simpleNaryMultiplyFolding2() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntExpression.multiply(
+                                            IntConstant.constant(3),
+                                            IntConstant.constant(2),
+                                            r2.apply(ExprCastOperator.SUM)
+                                        ).toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(6).multiply(
+                                       r2.apply(ExprCastOperator.SUM)).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The multiplications should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+    @Test
+    public void simpleNaryOrFolding2() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntExpression.or(
+                                            IntConstant.constant(4),
+                                            IntConstant.constant(2),
+                                            r2.apply(ExprCastOperator.SUM)
+                                        ).toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(6).or(
+                                       r2.apply(ExprCastOperator.SUM)).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The ors should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+    @Test
+    public void simpleNaryAndFolding2() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntExpression.and(
+                                            IntConstant.constant(3),
+                                            IntConstant.constant(2),
+                                            r2.apply(ExprCastOperator.SUM)
+                                        ).toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(2).and(
+                                       r2.apply(ExprCastOperator.SUM)).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The ands should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
 }

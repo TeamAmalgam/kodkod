@@ -193,8 +193,20 @@ public class ArithmeticConstantFolding implements OptimizationPass {
                     }
 
                     return IntExpression.compose(intExpr.op(), new_expressions);
-                } 
+                } else {
+                    IntExpression[] new_expressions = new IntExpression[non_constant_count + 1];
+                    new_expressions[0] = IntConstant.constant(int_value);
+                    int current_expr = 1;
 
+                    for (i = 0; i < intExpr.size(); i += 1) {
+                        if (!(children_optimized[i] instanceof IntConstant)) {
+                            new_expressions[current_expr] = children_optimized[i];
+                            current_expr += 1;
+                        }
+                    }
+
+                    return IntExpression.compose(intExpr.op(), new_expressions);
+                }
             }
 
             if (child_changed) {
