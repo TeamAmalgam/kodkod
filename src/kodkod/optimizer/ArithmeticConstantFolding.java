@@ -122,6 +122,85 @@ public class ArithmeticConstantFolding implements OptimizationPass {
         }
 
         public IntExpression visit(NaryIntExpression intExpr) {
+            IntExpression[] children_optimized = new IntExpression[intExpr.size()];
+            boolean child_changed = false;
+            int int_constant_count = 0;
+            int non_constant_count = 0;
+
+            for (int i = 0; i < intExpr.size(); i += 1) {
+                children_optimized[i] = intExpr.child(i).accept(this);   
+
+                if (children_optimized[i] != intExpr.child(i)) {
+                    child_changed = true;
+                }
+
+                if (children_optimized[i] instanceof IntConstant) {
+                    int_constant_count += 1;
+                } else {
+                    non_constant_count += 1;
+                }
+            }
+
+            if (int_constant_count > 0) {
+                int int_value = 0;
+                int i;
+
+                // Find the first child that is an integer constant.
+                for (i = 0; i < intExpr.size(); i += 1) {
+                    if (children_optimized[i] instanceof IntConstant) {
+                        int_value = ((IntConstant)children_optimized[i]).value();
+                        break;
+                    }
+                }
+
+                // Fold all the other integer constants.
+                for (i = i + 1; i < intExpr.size(); i += 1) {
+                    if (children_optimized[i] instanceof IntConstant) {
+                        int child_int_value = ((IntConstant)children_optimized[i]).value();
+                        switch(intExpr.op()) {
+                            case PLUS:
+                                int_value += child_int_value;
+                                break;
+                            case MULTIPLY:
+                                int_value *= child_int_value;
+                                break;
+                            case AND:
+                                int_value &= child_int_value;
+                                break;
+                            case OR:
+                                int_value |= child_int_value;
+                                break;
+                            default:
+                                throw new RuntimeException("Unimplemented operator: " + intExpr.op());
+                        }
+                    }
+                }
+
+                if (non_constant_count == 0) {
+                    return IntConstant.constant(int_value);
+                } else if ((int_value == 0 && intExpr.op() == IntOperator.PLUS) ||
+                           (int_value == 1 && intExpr.op() == IntOperator.MULTIPLY) ||
+                           (int_value == 0 && intExpr.op() == IntOperator.OR))
+                {
+                    IntExpression[] new_expressions = new IntExpression[non_constant_count];
+                    int current_expr = 0;
+
+                    for (i = 0; i < intExpr.size(); i += 1) {
+                        if (!(children_optimized[i] instanceof IntConstant)) {
+                            new_expressions[current_expr] = children_optimized[i];
+                            current_expr += 1;
+                        }
+                    }
+
+                    return IntExpression.compose(intExpr.op(), new_expressions);
+                } 
+
+            }
+
+            if (child_changed) {
+                return IntExpression.compose(intExpr.op(), children_optimized);
+            }
+
             return intExpr;
         }
 
