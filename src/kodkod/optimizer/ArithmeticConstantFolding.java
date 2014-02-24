@@ -208,6 +208,28 @@ public class ArithmeticConstantFolding implements OptimizationPass {
                 {
                     return other_value;
                 }
+
+                if (intExpr.op() == IntOperator.MINUS &&
+                    int_value == 0 &&
+                    (left_optimized instanceof IntConstant))
+                {
+                    return other_value.negate().accept(this);
+                }
+
+                if (intExpr.op() == IntOperator.DIVIDE &&
+                    int_value == 1 &&
+                    (right_optimized instanceof IntConstant))
+                {
+                    return other_value;
+                }
+
+                if (intExpr.op() == IntOperator.DIVIDE &&
+                    int_value == 0 &&
+                    (left_optimized instanceof IntConstant))
+                {
+                    return IntConstant.constant(0);
+                }
+
             }
 
             if ((left_optimized != left) ||

@@ -297,4 +297,62 @@ public class ArithmeticConstantFoldingTest {
         assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
         assertEquals("The subtraction should be folded.", expected_f.toString(), result.getFormula().toString());
     }
+
+    @Test
+    public void simpleZeroSubtraction() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                IntConstant.constant(0).minus(r2.apply(ExprCastOperator.SUM)).toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                r2.apply(ExprCastOperator.SUM).negate().toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The subtraction should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+    @Test
+    public void simpleDivideByOne() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                r2.apply(ExprCastOperator.SUM).divide(IntConstant.constant(1)).toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                r2.apply(ExprCastOperator.SUM).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The division should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+
+    @Test
+    public void simpleZeroDivision() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                IntConstant.constant(0).divide(r2.apply(ExprCastOperator.SUM)).toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                IntConstant.constant(0).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The division should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
 }
