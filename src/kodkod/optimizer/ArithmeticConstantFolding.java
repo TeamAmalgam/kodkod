@@ -169,7 +169,7 @@ public class ArithmeticConstantFolding implements OptimizationPass {
             }
 
             if ((left_optimized instanceof IntConstant) ||
-                       (right_optimized instanceof IntConstant))
+                (right_optimized instanceof IntConstant))
             {
                 // Handle the case where one of the formulas is an integer constant.
                
@@ -200,6 +200,13 @@ public class ArithmeticConstantFolding implements OptimizationPass {
                     int_value == 0)
                 {
                     return IntConstant.constant(0);
+                }
+
+                if (intExpr.op() == IntOperator.MINUS &&
+                    int_value == 0 &&
+                    (right_optimized instanceof IntConstant))
+                {
+                    return other_value;
                 }
             }
 
