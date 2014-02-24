@@ -276,6 +276,19 @@ public class ArithmeticConstantFolding implements OptimizationPass {
                 return ((UnaryIntExpression)expr_optimized).intExpr();
             }
 
+            if (intExpr.op() == IntOperator.NOT &&
+                (expr_optimized instanceof UnaryIntExpression) &&
+                ((UnaryIntExpression)expr_optimized).op() == IntOperator.NOT)
+            {
+                return ((UnaryIntExpression)expr_optimized).intExpr();
+            }
+
+            if (intExpr.op() == IntOperator.SGN &&
+                (expr_optimized instanceof UnaryIntExpression) &&
+                ((UnaryIntExpression)expr_optimized).op() == IntOperator.SGN)
+            {
+                return expr_optimized;
+            }
             return intExpr;
         }
 

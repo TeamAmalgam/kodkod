@@ -428,4 +428,42 @@ public class ArithmeticConstantFoldingTest {
         assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
         assertEquals("The signum should be folded.", expected_f.toString(), result.getFormula().toString());
     }
+
+    @Test
+    public void simpleDoubleNot() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       r2.apply(ExprCastOperator.SUM).not().not().toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       r2.apply(ExprCastOperator.SUM).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The nots should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+    @Test
+    public void simpleDoubleSignum() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       r2.apply(ExprCastOperator.SUM).signum().signum().toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       r2.apply(ExprCastOperator.SUM).signum().toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The signums should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
 }
