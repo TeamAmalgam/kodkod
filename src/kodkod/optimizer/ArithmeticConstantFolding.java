@@ -1,6 +1,7 @@
 package kodkod.optimizer;
 
 import kodkod.ast.*;
+import kodkod.ast.operator.*;
 import kodkod.ast.visitor.ReturnVisitor;
 import kodkod.engine.Solution;
 import kodkod.instance.Bounds;
@@ -133,6 +134,9 @@ public class ArithmeticConstantFolding implements OptimizationPass {
             if ((left_optimized instanceof IntConstant) &&
                 (right_optimized instanceof IntConstant))
             {
+                // Handle the case where the left and right have both
+                // been optimized into constants.
+
                 int left_int = ((IntConstant)left_optimized).value();
                 int right_int = ((IntConstant)right_optimized).value();
 
@@ -162,9 +166,48 @@ public class ArithmeticConstantFolding implements OptimizationPass {
                     default:
                         throw new RuntimeException("Unimplemented operator: " + intExpr.op());
                 }
-            } else if ((left_optimized != left) ||
+            }
+
+            if ((left_optimized instanceof IntConstant) ||
+                       (right_optimized instanceof IntConstant))
+            {
+                // Handle the case where one of the formulas is an integer constant.
+               
+                int int_value;
+                IntExpression other_value;
+
+                if (left_optimized instanceof IntConstant) {
+                    int_value = ((IntConstant)left_optimized).value();
+                    other_value = right_optimized;
+                } else {
+                    int_value = ((IntConstant)right_optimized).value();
+                    other_value = left_optimized;
+                }
+
+                if (intExpr.op() == IntOperator.PLUS &&
+                    int_value == 0)
+                {
+                    return other_value;
+                }
+
+                if (intExpr.op() == IntOperator.MULTIPLY &&
+                    int_value == 1)
+                {
+                    return other_value;
+                }
+
+                if (intExpr.op() == IntOperator.MULTIPLY &&
+                    int_value == 0)
+                {
+                    return IntConstant.constant(0);
+                }
+            }
+
+            if ((left_optimized != left) ||
                        (right_optimized != right))
             {
+                // Handle the case where the formulas have changed but we can't
+                // perform any further optimization.
                 return left_optimized.compose(intExpr.op(), right_optimized);
             }
 
