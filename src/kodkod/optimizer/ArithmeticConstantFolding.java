@@ -244,6 +244,38 @@ public class ArithmeticConstantFolding implements OptimizationPass {
         }
 
         public IntExpression visit(UnaryIntExpression intExpr) {
+            IntExpression expr = intExpr.intExpr();
+            IntExpression expr_optimized = expr.accept(this);
+
+            if (expr_optimized instanceof IntConstant) {
+                int int_value = ((IntConstant)expr_optimized).value();
+
+                switch (intExpr.op()) {
+                    case NEG:
+                        return IntConstant.constant(-int_value);
+                    case NOT:
+                        return IntConstant.constant(~int_value);
+                    case SGN:
+                        if (int_value > 0) {
+                            return IntConstant.constant(1);
+                        } else if (int_value < 0) {
+                            return IntConstant.constant(-1);
+                        } else {
+                            return IntConstant.constant(0);
+                        }
+                    default:
+                        throw new RuntimeException("Unimplemented operator: " + intExpr.op());
+
+                }
+            }
+
+            if (intExpr.op() == IntOperator.NEG &&
+                (expr_optimized instanceof UnaryIntExpression) &&
+                ((UnaryIntExpression)expr_optimized).op() == IntOperator.NEG) 
+            {
+                return ((UnaryIntExpression)expr_optimized).intExpr();
+            }
+
             return intExpr;
         }
 

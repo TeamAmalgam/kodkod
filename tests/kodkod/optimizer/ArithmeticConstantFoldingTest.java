@@ -355,4 +355,77 @@ public class ArithmeticConstantFoldingTest {
         assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
         assertEquals("The division should be folded.", expected_f.toString(), result.getFormula().toString());
     }
+
+    @Test
+    public void simpleDoubleNegation() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+        Relation r2 = Relation.unary("DummyInt2");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       r2.apply(ExprCastOperator.SUM).negate().negate().toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       r2.apply(ExprCastOperator.SUM).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The negations should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+    @Test
+    public void simpleConstantNegation() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(2).negate().toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(-2).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The negation should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+    @Test
+    public void simpleConstantNot() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(2).not().toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(~2).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The not should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
+
+    @Test
+    public void simpleConstantSignum() {
+        Universe u = new Universe("dummy");
+        Bounds b = new Bounds(u);
+        Relation r = Relation.unary("DummyInt");
+
+        Formula original_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(-2).signum().toExpression());
+        Formula expected_f = r.compare(ExprCompOperator.EQUALS,
+                                       IntConstant.constant(-1).toExpression());
+
+        FormulaWithBounds original = new FormulaWithBounds(original_f, b);
+        FormulaWithBounds result = optimization.optimize(original);
+
+        assertEquals("The bounds should be unchanged.", original.getBounds(), result.getBounds());
+        assertEquals("The signum should be folded.", expected_f.toString(), result.getFormula().toString());
+    }
 }
