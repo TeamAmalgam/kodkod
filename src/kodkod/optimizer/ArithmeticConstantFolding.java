@@ -55,10 +55,35 @@ public class ArithmeticConstantFolding implements OptimizationPass {
         }
 
         public Decls visit(Decls decls) {
+            Decls[] optimized_decls = new Decls[decls.size()];
+            boolean decls_changed = false;
+
+            for (int i = 0; i < decls.size(); i += 1) {
+                optimized_decls[i] = decls.get(i).accept(this);
+                if (optimized_decls[i] != decls.get(i)) {
+                    decls_changed = true;
+                }
+            }
+
+            if (decls_changed) {
+                Decls decls_to_return = optimized_decls[0];
+                for (int i = 1; i < decls.size(); i += 1) {
+                    decls_to_return = decls_to_return.and(optimized_decls[i]);
+                }
+                return decls_to_return;
+            }
+
             return decls;
         }
 
         public Decls visit(Decl decl) {
+            Expression expr = decl.expression();
+            Expression expr_optimized = expr.accept(this);
+
+            if (expr_optimized != expr) {
+                return decl.variable().declare(decl.multiplicity(), expr_optimized);
+            } 
+
             return decl;
         }
 
@@ -75,14 +100,45 @@ public class ArithmeticConstantFolding implements OptimizationPass {
         }
 
         public Expression visit(UnaryExpression unaryExpr) {
+            Expression inner_expr = unaryExpr.expression();
+            Expression inner_expr_optimized = inner_expr.accept(this);
+
+            if (inner_expr_optimized != inner_expr) {
+                return inner_expr_optimized.apply(unaryExpr.op());
+            }
+
             return unaryExpr;
         }
 
         public Expression visit(BinaryExpression binaryExpr) {
+            Expression left = binaryExpr.left();
+            Expression right = binaryExpr.right();
+
+            Expression left_optimized = left.accept(this);
+            Expression right_optimized = right.accept(this);
+
+            if (left != left_optimized || right != right_optimized) {
+                return left_optimized.compose(binaryExpr.op(), right_optimized);
+            }
+
             return binaryExpr;
         }
 
         public Expression visit(NaryExpression naryExpr) {
+            Expression[] expressions_optimized = new Expression[naryExpr.size()];
+            boolean expressions_changed = false;
+
+            for (int i = 0; i < naryExpr.size(); i += 1) {
+                expressions_optimized[i] = naryExpr.child(i).accept(this);
+                if (expressions_optimized[i] != naryExpr.child(i)) {
+                    expressions_changed = true;
+                }
+            }
+
+            if (expressions_changed) {
+                return Expression.compose(naryExpr.op(), expressions_optimized);
+            }
+
             return naryExpr;
         }
 
@@ -91,10 +147,43 @@ public class ArithmeticConstantFolding implements OptimizationPass {
         }
 
         public Expression visit(IfExpression ifExpr) {
+            Formula condition = ifExpr.condition();
+            Expression then_expression = ifExpr.thenExpr();
+            Expression else_expression = ifExpr.elseExpr();
+
+            Formula condition_optimized = condition.accept(this);
+            Expression then_expression_optimized = then_expression.accept(this);
+            Expression else_expression_optimized = else_expression.accept(this);
+
+            if (condition != condition_optimized ||
+                then_expression != then_expression_optimized ||
+                else_expression != else_expression_optimized) 
+            {
+                return condition_optimized.thenElse(then_expression_optimized,
+                                                    else_expression_optimized);
+            }
+
             return ifExpr;
         }
 
         public Expression visit(ProjectExpression project) {
+            Expression expr = project.expression();
+
+            Expression expr_optimized = expr.accept(this);
+            IntExpression[] optimized_columns = new IntExpression[project.arity()];
+            boolean columns_changed = false;
+
+            for (int i = 0; i < project.arity(); i += 1) {
+                optimized_columns[i] = project.column(i).accept(this);
+                if (optimized_columns[i] != project.column(i)) {
+                    columns_changed = true;
+                }
+            }
+
+            if (columns_changed || expr != expr_optimized) {
+                return expr_optimized.project(optimized_columns);
+            }
+
             return project;
         }
 
@@ -114,10 +203,32 @@ public class ArithmeticConstantFolding implements OptimizationPass {
         }
 
         public IntExpression visit(IfIntExpression intExpr) {
+            Formula condition = intExpr.condition();
+            IntExpression then_expr = intExpr.thenExpr();
+            IntExpression else_expr = intExpr.elseExpr();
+
+            Formula condition_optimized = condition.accept(this);
+            IntExpression then_expr_optimized = then_expr.accept(this);
+            IntExpression else_expr_optimized = else_expr.accept(this);
+
+            if (condition_optimized != condition ||
+                then_expr_optimized != then_expr ||
+                else_expr_optimized != else_expr)
+            {
+                return condition_optimized.thenElse(then_expr_optimized, else_expr_optimized);
+            }
+
             return intExpr;
         }
 
         public IntExpression visit(ExprToIntCast intExpr) {
+            Expression inner_expr = intExpr.expression();
+            Expression inner_expr_optimized = inner_expr.accept(this);
+
+            if (inner_expr_optimized != inner_expr) {
+                return inner_expr_optimized.apply(intExpr.op());
+            }
+
             return intExpr;
         }
 
@@ -384,26 +495,89 @@ public class ArithmeticConstantFolding implements OptimizationPass {
         }
 
         public IntExpression visit(SumExpression intExpr) {
+            Decls decls = intExpr.decls();
+            IntExpression int_expr = intExpr.intExpr();
+
+            Decls decls_optimized = decls.accept(this);
+            IntExpression int_expr_optimized = int_expr.accept(this);
+
+            if (decls_optimized != decls || int_expr_optimized != int_expr) {
+                return int_expr_optimized.sum(decls_optimized);
+            }
+
             return intExpr;
         }
 
         public Formula visit(IntComparisonFormula intComp) {
+            IntExpression left = intComp.left();
+            IntExpression right = intComp.right();
+
+            IntExpression left_optimized = left.accept(this);
+            IntExpression right_optimized = right.accept(this);
+
+            if (left_optimized != left || right_optimized == right) {
+                return left_optimized.compare(intComp.op(), right_optimized);
+            }
+
             return intComp;
         }
 
         public Formula visit(QuantifiedFormula quantFormula) {
+            Decls decls = quantFormula.decls();
+            Formula formula = quantFormula.formula();
+
+            Decls decls_optimized = decls.accept(this);
+            Formula formula_optimized = formula.accept(this);
+
+            if (decls_optimized != decls ||
+                formula_optimized != formula)
+            {
+                return formula_optimized.quantify(quantFormula.quantifier(), decls_optimized);
+            }
+
             return quantFormula;
         }
 
         public Formula visit(NaryFormula formula) {
+            Formula[] formulas_optimized = new Formula[formula.size()];
+            boolean formulas_changed = false;
+
+            for (int i = 0; i < formula.size(); i += 1) {
+                formulas_optimized[i] = formula.child(i).accept(this);
+
+                if (formulas_optimized[i] != formula.child(i)) {
+                    formulas_changed = true;
+                }
+            }
+
+            if (formulas_changed) {
+                return Formula.compose(formula.op(), formulas_optimized);
+            }
+
             return formula;
         }
 
         public Formula visit(BinaryFormula binFormula) {
+            Formula left = binFormula.left();
+            Formula right = binFormula.right();
+            Formula left_optimized = left.accept(this);
+            Formula right_optimized = right.accept(this); 
+
+            if (left_optimized != left || right_optimized != right) {
+                return left_optimized.compose(binFormula.op(), right_optimized);
+            }
+
             return binFormula;
         }
 
         public Formula visit(NotFormula notFormula) {
+            Formula formula = notFormula.formula();
+            Formula formula_optimized = formula.accept(this);
+
+            if (formula_optimized != formula) {
+                return formula_optimized.not();
+            }
+
             return notFormula;
         }
 
@@ -425,6 +599,13 @@ public class ArithmeticConstantFolding implements OptimizationPass {
         }
 
         public Formula visit(MultiplicityFormula multFormula) {
+            Expression expr = multFormula.expression();
+            Expression expr_optimized = expr.accept(this);
+
+            if (expr_optimized != expr) {
+                return expr_optimized.apply(multFormula.multiplicity());
+            }
+
             return multFormula;
         }
 
