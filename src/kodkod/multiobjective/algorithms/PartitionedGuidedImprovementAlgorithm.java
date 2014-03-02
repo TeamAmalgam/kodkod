@@ -70,6 +70,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         Solution previousSolution = null;
         while (isSat(solution)) {
             currentValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
+            logger.log(Level.FINE, "Found a solution. At time: {0}, Improving on {1}", new Object[] { Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)),  currentValues.values() });
             Formula improvementConstraints = currentValues.parametrizedImprovementConstraints();
             previousSolution = solution;
             solution = solver.solve(improvementConstraints, new Bounds(problem.getBounds().universe()));
@@ -266,6 +267,8 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             while (isSat(solution)) {
                 while (isSat(solution)) {
                     currentValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
+                    logger.log(Level.FINE, "Found a solution. At time: {0}, Improving on {1}", new Object[] { Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)),  currentValues.values() });
+
                     Formula improvementConstraints = currentValues.parametrizedImprovementConstraints();
                     previousSolution = solution;
                     solution = solver.solve(improvementConstraints, new Bounds(problem.getBounds().universe()));
