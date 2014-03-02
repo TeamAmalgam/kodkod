@@ -22,6 +22,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import kodkod.ast.Formula;
+import kodkod.engine.CheckpointedSolver;
 import kodkod.engine.IncrementalSolver;
 import kodkod.engine.Solution;
 import kodkod.instance.Bounds;
@@ -255,10 +256,11 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             started = true;
 
             // Run the regular algorithm within this partition
-            IncrementalSolver solver = IncrementalSolver.solver(getOptions());
+            CheckpointedSolver solver = CheckpointedSolver.solver(getOptions());
             Formula constraint = Formula.and(exclusionConstraints).and(partitionConstraints);
             Solution solution = solver.solve(constraint, problem.getBounds());
             incrementStats(solution, problem, constraint, false, constraint);
+            solver.checkpoint();
 
             // Work up to the Pareto front
             MetricPoint currentValues = null;
@@ -273,9 +275,6 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
                 }
                 foundParetoPoint(taskID, currentValues);
 
-                // Free the solver's resources, since we will be creating a new solver
-                solver.free();
-
                 if (!options.allSolutionsPerPoint()) {
                     // no magnifying glass
                     // previous solution was on the pareto front: report it
@@ -288,12 +287,12 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
                     logger.log(Level.FINE, "Magnifying glass on {0} found {1} solution(s). At time: {2}", new Object[] {currentValues.values(), Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
                 }
 
-                // Find another starting point
-                solver = IncrementalSolver.solver(getOptions());
+                solver.rollback();
                 exclusionConstraints.add(currentValues.exclusionConstraint());
                 constraint = Formula.and(exclusionConstraints).and(partitionConstraints);
                 solution = solver.solve(constraint, problem.getBounds());
                 incrementStats(solution, problem, constraint, false, null);
+                solver.checkpoint();
             }
 
             logger.log(Level.FINE, "Finishing Task {0}. At time: {1}", new Object[] { taskID, Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)) });
