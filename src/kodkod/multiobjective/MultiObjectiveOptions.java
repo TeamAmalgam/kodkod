@@ -1,15 +1,19 @@
 package kodkod.multiobjective;
 
 import kodkod.engine.config.Options;
+import kodkod.multiobjective.algorithms.AlgorithmFactory;
+import kodkod.engine.satlab.SATFactory;
 
 public final class MultiObjectiveOptions implements Cloneable {
 	
 	final Options kodkodOptions;
 	private boolean allSolutionsPerPoint = true;
+  private AlgorithmFactory multiObjectiveAlgorithm = AlgorithmFactory.CGIA;
 	
 	public MultiObjectiveOptions clone() {
 		final MultiObjectiveOptions c = new MultiObjectiveOptions(kodkodOptions);
 		c.setAllSolutionsPerPoint(allSolutionsPerPoint);
+    c.setAlgorithm(multiObjectiveAlgorithm);
 		return c;
 	}
 	
@@ -20,11 +24,14 @@ public final class MultiObjectiveOptions implements Cloneable {
 		b.append("\nMultiObjectiveOptions:");
 		b.append("\n allSolutionsPerPoint: ");
 		b.append(allSolutionsPerPoint);
+    b.append("\n algorithm: ");
+    b.append(multiObjectiveAlgorithm);
 		return b.toString();
 	}
 	
 	public MultiObjectiveOptions() {
-		kodkodOptions = new Options();
+    this(new Options());
+    kodkodOptions.setSolver(SATFactory.MiniSat);
 	}
 	
 	public MultiObjectiveOptions( Options options ) {
@@ -68,4 +75,20 @@ public final class MultiObjectiveOptions implements Cloneable {
 	public void setAllSolutionsPerPoint(boolean allSolutionsPerPoint){
 		this.allSolutionsPerPoint = allSolutionsPerPoint;
 	}
+
+  /**
+   * Returns the AlgorithmFactory to use.
+   * @return this.multiobjectiveAlgorithm
+   */
+  public AlgorithmFactory getAlgorithm() {
+    return multiObjectiveAlgorithm;
+  }
+
+  /**
+   * Sets the AlgorithmFactory to use.
+   * @ensures this.multiObjectiveAlgorithm = multiObjectiveAlgorithm
+   */
+  public void setAlgorithm(AlgorithmFactory multiObjectiveAlgorithm) {
+    this.multiObjectiveAlgorithm = multiObjectiveAlgorithm;
+  }
 }

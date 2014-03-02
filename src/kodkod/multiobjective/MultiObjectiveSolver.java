@@ -23,59 +23,47 @@ import kodkod.multiobjective.concurrency.TranslatingBlockingQueueSolutionNotifie
 import kodkod.multiobjective.statistics.Stats;
 import kodkod.multiobjective.statistics.StepCounter;
 
-public final class MultiObjectiveSolver implements KodkodSolver {
+public final class MultiObjectiveSolver {
 
-	MultiObjectiveAlgorithm algorithm;
 	final SolutionNotifier solutionNotifier;
 	final BlockingSolutionIterator solutionIterator;
 	final BlockingQueue<Solution> solutionQueue;
-	MultiObjectiveProblem problem;
 
-	final Solver kodkodSolver;
 	final MultiObjectiveOptions options;
+  
+  MultiObjectiveAlgorithm algorithm;
 
 	public MultiObjectiveSolver() {
-		options = new MultiObjectiveOptions();
-		kodkodSolver = new Solver(options.getKodkodOptions());
-		algorithm = new IncrementalGuidedImprovementAlgorithm("IGIA", options);
+    this(new MultiObjectiveOptions());
+	}
+
+  public MultiObjectiveSolver(MultiObjectiveOptions options) {
+    this.options = options;
 		solutionQueue = new LinkedBlockingQueue<Solution>();
 		solutionIterator = new BlockingSolutionIterator(solutionQueue);
 		solutionNotifier = new TranslatingBlockingQueueSolutionNotifier(solutionQueue);
-	}
+  }
 	
 	public StepCounter getCountCallsOnEachMovementToParetoFront(){
 		return algorithm.getCountCallsOnEachMovementToParetoFront();
 	}
 	
-	public Solver getKodkodSolver() {
-		return kodkodSolver;
-	}
-
 	public MultiObjectiveOptions multiObjectiveOptions() {
 		return options;
 	}
 	
-	@Override
 	public Options options() {
-		return kodkodSolver.options();
+		return options.getKodkodOptions();
 	}
 
-	@Override
-	public Solution solve(Formula formula, Bounds bounds)
-			throws HigherOrderDeclException, UnboundLeafException,
-			AbortedException {
-		return kodkodSolver.solve(formula, bounds);
-	}
-
-	@Override
 	public void free() {
-		kodkodSolver.free();
 	}
 	
 	public Iterator<Solution> solveAll(final Formula formula, final Bounds bounds, final SortedSet<Objective>objectives ) 
 			throws HigherOrderDeclException, UnboundLeafException, AbortedException {
 		if (objectives != null) {
-			problem = new MultiObjectiveProblem(bounds, formula, objectives);
+			final MultiObjectiveProblem problem = new MultiObjectiveProblem(bounds, formula, objectives);
+      algorithm = options.getAlgorithm().instance(options);
 
 			Thread solverThread = new Thread(new Runnable() {
 				public void run() {
@@ -85,17 +73,12 @@ public final class MultiObjectiveSolver implements KodkodSolver {
 			solverThread.start();
 			
 			return solutionIterator;
-		}
-		else {
-			return kodkodSolver.solveAll(formula, bounds);
-		}
+		} else {
+      throw new RuntimeException("Need to specify objectives for a moo problem.");
+    }
 	}
 	
 	public Stats getStats() {
 		return algorithm.getStats();
-	}
-	
-	public void setAlgorithm(MultiObjectiveAlgorithm algorithm){
-		this.algorithm = algorithm;
 	}
 }
