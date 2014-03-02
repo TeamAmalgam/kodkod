@@ -73,7 +73,6 @@ public final class CheckpointedGuidedImprovementAlgorithm extends MultiObjective
 
 			// We can't find anything better, so the previous solution is a pareto point.
 			foundParetoPoint(currentValues);
-			logger.log(Level.FINE, "Found Pareto point with values: {0}", currentValues.values());
 
 			if (!options.allSolutionsPerPoint()) {
 				tell(notifier, previousSolution, currentValues);
