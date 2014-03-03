@@ -52,6 +52,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         begin();
 
         final List<Formula> exclusionConstraints = new ArrayList<Formula>();
+        
         exclusionConstraints.add(problem.getConstraints());
 
         // Disable MetricPoint logger temporarily
@@ -253,6 +254,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
         @Override
         public void run() {
+          try {
             logger.log(Level.FINE, "Starting Task {0}. At time: {1}", new Object[] { taskID, Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)) });
             started = true;
 
@@ -292,8 +294,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
                 solver.rollback();
                 exclusionConstraints.add(currentValues.exclusionConstraint());
-                constraint = Formula.and(exclusionConstraints).and(partitionConstraints);
-                solution = solver.solve(constraint, problem.getBounds());
+                solution = solver.solve(currentValues.exclusionConstraint(), new Bounds(problem.getBounds().universe()));
                 incrementStats(solution, problem, constraint, false, null);
                 solver.checkpoint();
             }
@@ -308,6 +309,11 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
             // Signal that this task has completed
             doneSignal.countDown();
+          } catch (Exception e) {
+            logger.log(Level.SEVERE, "Task failed.");
+            logger.log(Level.SEVERE, e.toString());
+            throw new RuntimeException(e);
+          }
         }
     }
 }
