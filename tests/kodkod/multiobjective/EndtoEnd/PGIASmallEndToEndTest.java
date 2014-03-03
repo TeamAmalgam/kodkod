@@ -34,7 +34,6 @@ public class PGIASmallEndToEndTest {
 	public void WithSymmetryBreaking() {
 		MultiObjectiveProblem problem = moo_problem.getProblem();
 		PartitionedGuidedImprovementAlgorithm pgia = new PartitionedGuidedImprovementAlgorithm("asdf", new MultiObjectiveOptions());
-		pgia.getOptions().setSolver(SATFactory.DefaultSAT4J);
 		pgia.getOptions().setSymmetryBreaking(1000);
 
 		SolutionNotifier notifier = new SolutionNotifier() {
