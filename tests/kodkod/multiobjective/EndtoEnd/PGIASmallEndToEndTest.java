@@ -33,8 +33,12 @@ public class PGIASmallEndToEndTest {
 	@Test
 	public void WithSymmetryBreaking() {
 		MultiObjectiveProblem problem = moo_problem.getProblem();
-		PartitionedGuidedImprovementAlgorithm pgia = new PartitionedGuidedImprovementAlgorithm("asdf", new MultiObjectiveOptions());
-		pgia.getOptions().setSymmetryBreaking(1000);
+    
+    MultiObjectiveOptions o = new MultiObjectiveOptions();
+    o.getKodkodOptions().setSolver(SATFactory.MiniSat);
+    o.getKodkodOptions().setSymmetryBreaking(1000);
+
+		PartitionedGuidedImprovementAlgorithm pgia = new PartitionedGuidedImprovementAlgorithm("asdf", o);
 
 		SolutionNotifier notifier = new SolutionNotifier() {
 			List<MeasuredSolution> solutions = new Vector<MeasuredSolution>();
@@ -72,9 +76,12 @@ public class PGIASmallEndToEndTest {
 	@Test
 	public void WithoutSymmetryBreaking() {
 		MultiObjectiveProblem problem = moo_problem.getProblem();
-		PartitionedGuidedImprovementAlgorithm pgia = new PartitionedGuidedImprovementAlgorithm("asdf", new MultiObjectiveOptions());
-		pgia.getOptions().setSolver(SATFactory.DefaultSAT4J);
-		pgia.getOptions().setSymmetryBreaking(0);
+    
+    MultiObjectiveOptions o = new MultiObjectiveOptions();
+    o.getKodkodOptions().setSolver(SATFactory.MiniSat);
+    o.getKodkodOptions().setSymmetryBreaking(0);
+
+		PartitionedGuidedImprovementAlgorithm pgia = new PartitionedGuidedImprovementAlgorithm("asdf", o);
 
 		SolutionNotifier notifier = new SolutionNotifier() {
 			List<MeasuredSolution> solutions = new Vector<MeasuredSolution>();

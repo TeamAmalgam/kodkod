@@ -50,7 +50,7 @@ public abstract class MultiObjectiveAlgorithm {
   }
 
   public Options getOptions() {
-		return internalSolver.options();
+		return options.getKodkodOptions();
 	}
 
 	public StepCounter getCountCallsOnEachMovementToParetoFront(){
