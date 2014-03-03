@@ -30,7 +30,6 @@ public class SolverSmallEndToEndTest {
 	@Test
 	public void TestEndToEnd() {
 		MultiObjectiveSolver solver = new MultiObjectiveSolver();
-		solver.options().setSolver(SATFactory.MiniSat);
 		solver.options().setSymmetryBreaking(1000);
 
 		Iterator<Solution> solutions = solver.solveAll(moo_problem.getFormula(), 
