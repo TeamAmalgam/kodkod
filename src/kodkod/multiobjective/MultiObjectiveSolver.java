@@ -23,15 +23,17 @@ import kodkod.multiobjective.concurrency.TranslatingBlockingQueueSolutionNotifie
 import kodkod.multiobjective.statistics.Stats;
 import kodkod.multiobjective.statistics.StepCounter;
 
-public final class MultiObjectiveSolver {
+public final class MultiObjectiveSolver implements KodkodSolver {
 
 	final SolutionNotifier solutionNotifier;
 	final BlockingSolutionIterator solutionIterator;
 	final BlockingQueue<Solution> solutionQueue;
-
 	final MultiObjectiveOptions options;
   
   MultiObjectiveAlgorithm algorithm;
+
+  // Solver used for non-optimization problems.
+  final Solver kodkodSolver;
 
 	public MultiObjectiveSolver() {
     this(new MultiObjectiveOptions());
@@ -42,6 +44,8 @@ public final class MultiObjectiveSolver {
 		solutionQueue = new LinkedBlockingQueue<Solution>();
 		solutionIterator = new BlockingSolutionIterator(solutionQueue);
 		solutionNotifier = new TranslatingBlockingQueueSolutionNotifier(solutionQueue);
+
+    kodkodSolver = new Solver(options.getKodkodOptions());
   }
 	
 	public StepCounter getCountCallsOnEachMovementToParetoFront(){
@@ -52,11 +56,22 @@ public final class MultiObjectiveSolver {
 		return options;
 	}
 	
+  @Override
 	public Options options() {
 		return options.getKodkodOptions();
 	}
 
+  @Override
+  public Solution solve(Formula formula, Bounds bounds)
+      throws HigherOrderDeclException, UnboundLeafException,
+      AbortedException {
+
+    return kodkodSolver.solve(formula, bounds);
+  }
+
+  @Override
 	public void free() {
+    kodkodSolver.free();
 	}
 	
 	public Iterator<Solution> solveAll(final Formula formula, final Bounds bounds, final SortedSet<Objective>objectives ) 
@@ -74,11 +89,15 @@ public final class MultiObjectiveSolver {
 			
 			return solutionIterator;
 		} else {
-      throw new RuntimeException("Need to specify objectives for a moo problem.");
+      return kodkodSolver.solveAll(formula, bounds);
     }
 	}
 	
 	public Stats getStats() {
 		return algorithm.getStats();
 	}
+
+  public Solver getKodkodSolver() {
+    return kodkodSolver;
+  }
 }
