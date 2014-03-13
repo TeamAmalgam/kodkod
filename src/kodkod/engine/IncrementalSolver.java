@@ -183,7 +183,7 @@ public final class IncrementalSolver implements KodkodSolver {
 		    //System.out.println("Bounds : " + recreatedBounds);
 		    //System.out.println("OldBounds : " + b);
 		    
-//		    f = Formula.compose(FormulaOperator.AND, resultingFormulas);
+		    f = Formula.compose(FormulaOperator.AND, resultingFormulas);
 			//System.out.println("By Solving: " + f);
 		    //System.out.println("HIT");
 		} else {
@@ -191,7 +191,7 @@ public final class IncrementalSolver implements KodkodSolver {
 		    //System.out.println("Additional Solve");
 		    //System.out.println("Solving: " + f);
 			// This is an additional constraint so we only need to run the substitutions on it.
-//			f = reducer.reduceFormula(f);
+			f = reducer.reduceFormula(f);
 			//reducer.recreateUniverseAndBounds(b);
 			recreatedBounds = new Bounds(reducer.recreatedBounds.universe());//reducer.recreatedBounds;
 			//System.out.println("Bounds : " + recreatedBounds);
