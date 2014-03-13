@@ -130,7 +130,6 @@ public final class MetricPoint {
         final List<Formula> conjuncts = new ArrayList<Formula>(values.size());
         int bitIndex = 0;
 
-        // values is a SortedMap so the iterator for values.keySet() = objectives returns keys in ascending order
         for (final Objective objective : objective_order) {
             int value = values.get(objective).intValue();
             if (set.get(bitIndex)) {

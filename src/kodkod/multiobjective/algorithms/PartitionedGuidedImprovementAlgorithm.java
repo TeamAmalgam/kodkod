@@ -118,6 +118,9 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             // We skip 0 (the partition that is already dominated) and 2^n - 1 (the partition where we didn't find any solutions)
             // Give each task a CountDownLatch so this thread can wait until all 2^n - 2 tasks have completed
             int numObjectives = problem.getObjectives().size();
+
+            // Convert the objective set into an array so we have a deterministic order
+            // for mapping the bits in the bitset to objectives.
             Objective[] objective_order = problem.getObjectives().toArray(new Objective[0]);
 
             int maxMapping = (int) Math.pow(2, numObjectives) - 1;
