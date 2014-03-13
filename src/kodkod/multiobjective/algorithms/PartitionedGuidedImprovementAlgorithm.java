@@ -118,11 +118,13 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             // We skip 0 (the partition that is already dominated) and 2^n - 1 (the partition where we didn't find any solutions)
             // Give each task a CountDownLatch so this thread can wait until all 2^n - 2 tasks have completed
             int numObjectives = problem.getObjectives().size();
+            Objective[] objective_order = problem.getObjectives().toArray(new Objective[0]);
+
             int maxMapping = (int) Math.pow(2, numObjectives) - 1;
             CountDownLatch doneSignal = new CountDownLatch(maxMapping - 1);
             for (int mapping = 1; mapping < maxMapping; mapping++) {
                 BitSet bitSet = BitSet.valueOf(new long[] { mapping });
-                tasks.add(new PartitionSearcherTask(mapping, problem, exclusionConstraints, currentValues.partitionConstraints(bitSet), notifier, threadPool, doneSignal));
+                tasks.add(new PartitionSearcherTask(mapping, problem, exclusionConstraints, currentValues.partitionConstraints(bitSet, objective_order), notifier, threadPool, doneSignal));
             }
 
             // Link up the dependencies

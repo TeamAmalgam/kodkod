@@ -126,14 +126,12 @@ public final class MetricPoint {
     // Then if bit_i is 0, we have the constraint "metric_i <  val_i"
     //  and if bit_i is 1, we have the constraint "metric_i >= val_i"
     // We bias the constraints so we don't include the boundary in multiple partitions
-    public Formula partitionConstraints(BitSet set) {
+    public Formula partitionConstraints(BitSet set, Objective[] objective_order) {
         final List<Formula> conjuncts = new ArrayList<Formula>(values.size());
-        Set<Objective> objectives = values.keySet();
         int bitIndex = 0;
 
         // values is a SortedMap so the iterator for values.keySet() = objectives returns keys in ascending order
-        Objective prevObjective = null;
-        for (final Objective objective : objectives) {
+        for (final Objective objective : objective_order) {
             int value = values.get(objective).intValue();
             if (set.get(bitIndex)) {
                 conjuncts.add(objective.betterThanOrEqual(value));
@@ -141,16 +139,6 @@ public final class MetricPoint {
                 conjuncts.add(objective.worseThan(value));
             }
             bitIndex++;
-
-            // Assert that the objectives set is sorted (in ascending order)
-            // Note that this is sufficient but not necessary for the order to be deterministic
-            // Thus, there should be a good reason if this exception is thrown but the order is still deterministic
-            if (prevObjective != null) {
-                if (prevObjective.compareTo(objective) != -1) {
-                    throw new RuntimeException("The objectives set is not sorted. The order may not be deterministic.");
-                }
-            }
-            prevObjective = objective;
         }
 
         StringBuilder sb = new StringBuilder("Partition constraints are conjunction of ");
