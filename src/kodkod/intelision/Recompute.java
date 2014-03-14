@@ -102,6 +102,25 @@ class Recompute {
       // Int/next is special.
       if (rel.toString().equals("Int/next")) {
         System.out.println("This is Int/next");
+        
+        int previous_int = 0;
+        boolean first = true;
+
+        for (int i : toBounds.ints().toArray()) {
+          if (first) {
+            first = false;
+            previous_int = i;
+            continue;
+          }
+
+          Tuple previousTuple = toBounds.exactBound(previous_int).iterator().next();
+          Tuple currentTuple = toBounds.exactBound(i).iterator().next();
+
+          tuples.add(tupleFactory.tuple(previousTuple.atom(0), currentTuple.atom(0)));
+        }
+
+        newInstance.add(rel, tuples);
+
         continue;
       }
 
