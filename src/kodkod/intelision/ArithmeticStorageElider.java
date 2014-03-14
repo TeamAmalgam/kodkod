@@ -35,7 +35,7 @@ import kodkod.ast.SumExpression;
 import kodkod.ast.UnaryExpression;
 import kodkod.ast.UnaryIntExpression;
 import kodkod.ast.Variable;
-import kodkod.ast.operator.ExprCastOperator;
+import kodkod.ast.operator.*;
 import kodkod.ast.visitor.ReturnVisitor;
 
 class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
@@ -317,14 +317,71 @@ class ArithmeticStorageElider implements ReturnVisitor<Node,Node,Node,Node>{
 				replace = Replace.FALSE;
 				return newFormula;
 			}
-			else {
-				return n;
+			else if(n.left() instanceof BinaryExpression &&
+              n.right().equals(Relation.INTS)) {
+        BinaryExpression innerExpr = (BinaryExpression)n.left();
+
+        if (innerExpr.op() == ExprOperator.JOIN &&
+            innerExpr.left() instanceof Relation &&
+            innerExpr.right() instanceof BinaryExpression)
+        {
+          Relation leftRelation = (Relation)innerExpr.left();
+          BinaryExpression innerRightExpr = (BinaryExpression)innerExpr.right();
+
+          if (innerRightExpr.op() == ExprOperator.PRODUCT &&
+              innerRightExpr.left() instanceof Relation &&
+              innerRightExpr.right() instanceof Relation) 
+          {
+            Relation middleRelation = (Relation)innerRightExpr.left();
+            Relation rightRelation = (Relation)innerRightExpr.right();
+
+            if (leftRelation.equals(middleRelation) &&
+                ier.elidedRelations.contains(rightRelation))
+            {
+              return Formula.TRUE;
+            }
+          }
+        }
 			}
+      else if(n.left().equals(n.right())) {
+        return Formula.TRUE;
+      }
+      return n;
 		}
 
 		
-		public   MultiplicityFormula visit(MultiplicityFormula multFormula) {
-			//System.out.println("Visiting MultiplicityFormula " + multFormula);
+		public   Formula visit(MultiplicityFormula multFormula) {
+      Expression innerExpr = multFormula.expression();
+      
+      if (innerExpr instanceof BinaryExpression) {
+        BinaryExpression innerBinExpr = (BinaryExpression)innerExpr;
+
+			  System.out.println("Visiting MultiplicityFormula " + multFormula);
+        System.out.println("Inner Expr is " + innerExpr.toString());
+
+        if (innerBinExpr.op() == ExprOperator.JOIN &&
+            innerBinExpr.left() instanceof Relation &&
+            innerBinExpr.right() instanceof BinaryExpression) {
+          Relation leftRelation = (Relation)innerBinExpr.left();
+          
+          BinaryExpression innerRightBinExpr = (BinaryExpression)innerBinExpr.right();
+          if (innerRightBinExpr.op() == ExprOperator.PRODUCT &&
+              innerRightBinExpr.left() instanceof Relation &&
+              innerBinExpr.right() instanceof BinaryExpression) {
+            Relation middleRelation = (Relation)innerRightBinExpr.left();
+            Relation rightRelation = (Relation)innerRightBinExpr.right();
+
+            System.out.println("Matched formula with relations: " + leftRelation.toString() + ", " + middleRelation.toString() + ", " + rightRelation.toString());
+
+            if (leftRelation.equals(middleRelation) &&
+                ier.elidedRelations.contains(rightRelation)) {
+              System.out.println("Relations meet the constraints for formula to be removed.");
+              return Formula.TRUE;
+            }
+          }
+        }
+      }
+
 			return multFormula;
 		}
 

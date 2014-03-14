@@ -69,6 +69,8 @@ public final class IntExprReduction {
 	IdentityHashMap<Node, Node> variables;
 	IdentityHashMap<Node, Expression> equalExpressions;
 	
+  IdentityHashSet<Relation> elidedRelations;
+
 	public IntExprReduction() {
 		reductions_delete = new IdentityHashSet<Node>();
 		reductions_replace = new IdentityHashSet<Node>();
@@ -81,6 +83,7 @@ public final class IntExprReduction {
 		answers = new IdentityHashMap<Node, String>();
 		variables = new IdentityHashMap<Node, Node>();
 		equalExpressions = new IdentityHashMap<Node, Expression>();
+    elidedRelations = new IdentityHashSet<Relation>();
 	}
 
 	//adds AST node to proper reductions set, making sure to remove it from any others first
@@ -144,15 +147,31 @@ public final class IntExprReduction {
 		}
 
 		
+    for (Node n : reductions_delete) {
+      if (!(n instanceof ComparisonFormula)) {
+        throw new RuntimeException("Expected Comparison Formula, got: " + n.toString());
+      }
+
+      ComparisonFormula cf = (ComparisonFormula)n;
+      
+      if (cf.left() instanceof Relation) {
+        elidedRelations.add((Relation)cf.left());
+      } else if (cf.right() instanceof Relation) {
+        elidedRelations.add((Relation)cf.right());
+      } else {
+        throw new RuntimeException("Expected Relation to be operand in: " + n.toString());
+      }
+    }
 		
-		for(int i = 0; i < formulas.length; i++)
+		for(int i = 0; i < formulas.length; i++) {
 			if(createNewTree[i]){
 				final Formula f = formulas[i];
 
 				modifiedTree = reduceFormula(f);
 				formulas[i] = modifiedTree;
 			}
-		
+    }
+
 		return formulas;
 	}
 	
@@ -338,15 +357,6 @@ public final class IntExprReduction {
 	}
 	
 	public void recreateUniverseAndBounds(Bounds oldBounds){
-		//System.out.println("IN UTILITY");
-		//System.out.println(equalityIntConstants);
-		//System.out.println("BOUNDS");
-		//System.out.println(b);
-		//System.out.println("UNIVERSE");
-		//System.out.println(b.universe());
-		
-		//ArrayList<String> experimentInts = this.claferMOOconstants;
-		//System.out.println(this.claferMOOconstants);
 		ArrayList<String> experimentInts = this.equalityIntConstants;
 		
 		Universe oldUniverse = oldBounds.universe();
@@ -354,7 +364,6 @@ public final class IntExprReduction {
 		ArrayList<Object> newUniverseList = new ArrayList<Object>();
 		while(itr.hasNext()){
 			Object atom = itr.next();
-			//System.out.println(atom);
 			if(isInteger(atom.toString())){
 				if(experimentInts.contains(atom.toString()) && !newUniverseList.contains(atom.toString())){
 					newUniverseList.add(atom);
@@ -363,6 +372,9 @@ public final class IntExprReduction {
 			else
 				newUniverseList.add(atom);
 		}
+
+    // Get a list of all the relations we elided.
+
 		//System.out.println("New Universe: " + newUniverseList);
 		Universe newUniverse = new Universe(newUniverseList);
 		Bounds newBounds = new Bounds(newUniverse);
@@ -374,6 +386,12 @@ public final class IntExprReduction {
 				//System.out.println("Eliding Int/next");
 				continue;
 			}
+
+      if (elidedRelations.contains(r)) {
+        System.out.println("Eliding " + r);
+        continue;
+      }
+
 			//System.out.println("relation");
 			//System.out.println(r);
 			//System.out.println(oldBounds.lowerBound(r));
