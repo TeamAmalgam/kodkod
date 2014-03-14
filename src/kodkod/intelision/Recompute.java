@@ -145,6 +145,11 @@ class Recompute {
           System.out.println("Arithmetic evaluates to: " + arithmeticResult);
 
           TupleSet possibleTuples = toBounds.exactBound(arithmeticResult);
+          
+          if (possibleTuples == null) {
+            throw new RuntimeException("Integer " + arithmeticResult + " is not bound.");
+          }
+
           Tuple tupleToAdd = possibleTuples.iterator().next();
           
           tuples.add(tupleToAdd);
