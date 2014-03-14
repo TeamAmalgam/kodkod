@@ -2,11 +2,13 @@ package kodkod.intelision;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import kodkod.ast.BinaryExpression;
 import kodkod.ast.ComparisonFormula;
@@ -17,6 +19,7 @@ import kodkod.ast.IntConstant;
 import kodkod.ast.IntToExprCast;
 import kodkod.ast.Node;
 import kodkod.ast.Relation;
+import kodkod.ast.visitor.AbstractCollector;
 import kodkod.engine.Solution;
 import kodkod.engine.Solver;
 import kodkod.engine.config.Options;
@@ -105,6 +108,11 @@ public final class IntExprReduction {
 		for(int i = 0; i < formulas.length; i++) 
 		{
 			final Formula f = formulas[i];
+      final IntConstantFinder constantFinder = new IntConstantFinder();
+      for (Integer num : f.accept(constantFinder)) {
+        equalityIntConstants.add(num.toString());
+      }
+
 			final EqualityFinder equalityFinder = new EqualityFinder(this);
 			f.accept(equalityFinder);
 			final IdentityHashSet<ComparisonFormula> currentComparisonNodes = equalityFinder.comparisonNodes;
@@ -228,18 +236,21 @@ public final class IntExprReduction {
 		return toReturn;
 	}
 
+  class IntConstantFinder extends AbstractCollector<Integer> {
+    public IntConstantFinder() {
+      super(new HashSet<Node>());
+    }
+
+    protected Set<Integer> newSet() {
+      return new HashSet<Integer>();
+    }
+
+    public Set<Integer> visit(IntConstant constant) {
+      return Collections.singleton(new Integer(constant.value()));
+    }
+  }
+
 	public void getEqualityConstants(){
-		//System.out.println("Get Equality Ints");
-		for(ComparisonFormula f : comparisonNodes){
-			if(f.left() instanceof IntToExprCast && ((IntToExprCast)f.left()).intExpr() instanceof IntConstant){
-				IntConstant c = (IntConstant)((IntToExprCast)f.left()).intExpr();
-				equalityIntConstants.add(c.toString());
-			}
-			else if(f.right() instanceof IntToExprCast && ((IntToExprCast)f.right()).intExpr() instanceof IntConstant){
-				IntConstant c = (IntConstant)((IntToExprCast)f.right()).intExpr();
-				equalityIntConstants.add(c.toString());
-			}	
-		}
 		if(!equalityIntConstants.contains("0"))
 			equalityIntConstants.add("0");
 		HashSet<String> hs = new HashSet<String>();
