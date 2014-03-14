@@ -65,6 +65,7 @@ public final class CheckpointedSolver implements KodkodSolver {
 	private Translation.Checkpointed translation;
 	private Boolean outcome;
   private IntExprReduction reducer;
+  private Bounds originalBounds;
 
 	private Stack<Boolean> outcomeCheckpoints;	
 	private Stack<Translation.Checkpointed> translationCheckpoints;
@@ -132,6 +133,8 @@ public final class CheckpointedSolver implements KodkodSolver {
 			throw new IllegalStateException("Cannot use this solver since a prior call to solve(...) resulted in an exception.");
 	
     if (translation == null) {
+      originalBounds = b;
+
       Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
       reducer.getEqualityConstants();
       reducer.recreateUniverseAndBounds(b);
@@ -147,7 +150,7 @@ public final class CheckpointedSolver implements KodkodSolver {
 		final Solution solution;
 		try {			
 			final long startTransl = System.currentTimeMillis();
-			translation = translation==null ? Translator.translateCheckpointed(f, b, options) : Translator.translateCheckpointed(f, b, translation);
+			translation = translation==null ? Translator.translateCheckpointed(f, recreatedBounds, options) : Translator.translateCheckpointed(f, recreatedBounds, translation);
 			final long endTransl = System.currentTimeMillis();
 
 			if (translation.trivial()) {
@@ -186,7 +189,7 @@ public final class CheckpointedSolver implements KodkodSolver {
 			outcome = Boolean.FALSE;
 		}
 
-		return reducer.recompute(solution, recreatedBounds.universe(), this.options);
+		return reducer.recompute(solution, recreatedBounds, originalBounds, this.options);
 	}
 
 	/**

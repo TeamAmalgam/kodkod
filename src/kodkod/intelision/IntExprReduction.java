@@ -427,8 +427,8 @@ public final class IntExprReduction {
 		return (Formula)f.accept(elider);
 	}
 
-	public Solution recompute(Solution soln, Universe universe, Options options) {
-		return new Recompute(this).recompute(soln, universe.factory(), comparisonNodes, bogusVariables, options);
+	public Solution recompute(Solution soln, Bounds fromBounds, Bounds toBounds, Options options) {
+		return new Recompute(this).recompute(soln, fromBounds, toBounds, options);
 	}
 
 	public void solve(Formula formula, Bounds bounds, TupleFactory factory, Universe universe, int bitwidth)
@@ -444,8 +444,6 @@ public final class IntExprReduction {
 		Solution sol = solver.solve(formula,bounds);
 
 		System.out.println(sol.toString());
-		
-		System.out.println(new Recompute(this).recompute(sol, factory, comparisonNodes, bogusVariables, solver.options()).toString());
 	}
 	
 	

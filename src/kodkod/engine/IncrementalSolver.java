@@ -108,6 +108,7 @@ public final class IncrementalSolver implements KodkodSolver {
 	private Translation.Incremental translation;
 	private Boolean outcome;
 	private IntExprReduction reducer;
+  private Bounds originalBounds;
 
 	/**
 	 * Initializes the solver with the given options.
@@ -170,6 +171,8 @@ public final class IncrementalSolver implements KodkodSolver {
 	
 
 		if (translation == null) {
+        originalBounds = b;
+
 		    //System.out.println("Initial Solve");
 			//System.out.println("Solving: " + f);
 			// This is the first formula so we need to run the full int reduction on it.
@@ -241,7 +244,7 @@ public final class IncrementalSolver implements KodkodSolver {
 			free();
 		}
 		
-		return reducer.recompute(solution, recreatedBounds.universe(), this.options);
+		return reducer.recompute(solution, recreatedBounds, originalBounds, this.options);
 	}
 
 	/**

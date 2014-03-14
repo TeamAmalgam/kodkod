@@ -147,7 +147,7 @@ public final class Solver implements KodkodSolver {
 
 			if (translation.trivial()) {
 				solution =  trivial(translation, endTransl - startTransl);
-        return reducer.recompute(solution, recreatedBounds.universe(), this.options);
+			  return reducer.recompute(solution, recreatedBounds, bounds, this.options);
       }
 
 			final SATSolver cnf = translation.cnf();
@@ -159,7 +159,7 @@ public final class Solver implements KodkodSolver {
 
 			final Statistics stats = new Statistics(translation, endTransl - startTransl, endSolve - startSolve);
 			solution = isSat ? sat(translation, stats) : unsat(translation, stats);
-      return reducer.recompute(solution, recreatedBounds.universe(), this.options);
+			return reducer.recompute(solution, recreatedBounds, bounds, this.options);
 
 		} catch (SATAbortedException sae) {
 			throw new AbortedException(sae);
@@ -277,6 +277,7 @@ public final class Solver implements KodkodSolver {
 		private long translTime;
 		private int trivial;
     private IntExprReduction reducer;
+    private Bounds originalBounds;
     private Bounds recreatedBounds;
     private Options options;
 
@@ -289,6 +290,7 @@ public final class Solver implements KodkodSolver {
       this.reducer.getEqualityConstants();
       this.reducer.recreateUniverseAndBounds(bounds);
       
+      this.originalBounds = bounds;
       this.recreatedBounds = this.reducer.recreatedBounds;
       bounds = this.recreatedBounds;
 
@@ -370,7 +372,7 @@ public final class Solver implements KodkodSolver {
 
       System.out.println("Found un-recomputed solution:");
       System.out.println(sol);
-			return reducer.recompute(sol, recreatedBounds.universe(), this.options);
+			return reducer.recompute(sol, recreatedBounds, originalBounds, this.options);
 		}
 
 		/**
@@ -425,7 +427,7 @@ public final class Solver implements KodkodSolver {
 
       System.out.println("Found un-recomputed solution:");
       System.out.println(sol);
-			return reducer.recompute(sol, recreatedBounds.universe(), this.options);
+			return reducer.recompute(sol, recreatedBounds, originalBounds, this.options);
 		}
 
 	}
