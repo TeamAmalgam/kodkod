@@ -89,6 +89,8 @@ public final class CheckpointedSolver implements KodkodSolver, Cloneable{
    */
   private CheckpointedSolver(CheckpointedSolver solver) {
     this.options = solver.options.clone();
+    this.reducer = solver.reducer;
+    this.originalBounds = solver.originalBounds;
 
     if (solver.outcome == null) {
       this.outcome = null;
