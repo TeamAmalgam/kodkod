@@ -14,6 +14,7 @@ import kodkod.engine.config.Options;
 import kodkod.engine.fol2sat.HigherOrderDeclException;
 import kodkod.engine.fol2sat.UnboundLeafException;
 import kodkod.instance.Bounds;
+import kodkod.multiobjective.algorithms.CheckpointedGuidedImprovementAlgorithm;
 import kodkod.multiobjective.algorithms.IncrementalGuidedImprovementAlgorithm;
 import kodkod.multiobjective.algorithms.PartitionedGuidedImprovementAlgorithm;
 import kodkod.multiobjective.algorithms.MultiObjectiveAlgorithm;

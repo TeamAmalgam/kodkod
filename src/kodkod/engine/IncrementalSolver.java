@@ -22,6 +22,7 @@
 package kodkod.engine;
 
 import kodkod.ast.Formula;
+import kodkod.ast.operator.FormulaOperator;
 import kodkod.engine.config.Options;
 import kodkod.engine.fol2sat.HigherOrderDeclException;
 import kodkod.engine.fol2sat.SymmetryDetector;
@@ -33,6 +34,7 @@ import kodkod.engine.satlab.SATFactory;
 import kodkod.engine.satlab.SATSolver;
 import kodkod.instance.Bounds;
 import kodkod.instance.Universe;
+import kodkod.intelision.IntExprReduction;
 
 /** 
  * A computational engine for solving a sequence of related relational
@@ -105,7 +107,9 @@ public final class IncrementalSolver implements KodkodSolver {
 	private final Options options;
 	private Translation.Incremental translation;
 	private Boolean outcome;
-	
+	private IntExprReduction reducer;
+  private Bounds originalBounds;
+
 	/**
 	 * Initializes the solver with the given options.
 	 * @ensures no this.solution' && no this.formulas' && 
@@ -114,6 +118,7 @@ public final class IncrementalSolver implements KodkodSolver {
 	private IncrementalSolver(Options options) { 
 		this.options = options;
 		this.outcome = null;
+		this.reducer = new IntExprReduction();
 	}
 	
 	/**
@@ -157,16 +162,49 @@ public final class IncrementalSolver implements KodkodSolver {
 	 * @throws AbortedException this solving task has been aborted
 	 */
 	public Solution solve(Formula f, Bounds b) throws HigherOrderDeclException, UnboundLeafException, AbortedException {
+	    Bounds recreatedBounds = null;
 		if (outcome==Boolean.FALSE)
 			throw new IllegalStateException("Cannot use this solver since a prior call to solve(...) produced an UNSAT solution.");
 
 		if (outcome != null && translation==null) 
 			throw new IllegalStateException("Cannot use this solver since a prior call to solve(...) resulted in an exception.");
-		
+	
+
+		if (translation == null) {
+        originalBounds = b;
+
+		    //System.out.println("Initial Solve");
+			//System.out.println("Solving: " + f);
+			// This is the first formula so we need to run the full int reduction on it.
+		    //System.out.println("Hit4");
+		    Formula[] resultingFormulas = reducer.reduceIntExpressions(f);
+		    //System.out.println("Hit3");
+		    //System.out.println("SIZE: " + resultingFormulas.length);
+		    reducer.getEqualityConstants();
+		    reducer.recreateUniverseAndBounds(b);
+		    recreatedBounds = reducer.recreatedBounds;
+		    //System.out.println("Bounds : " + recreatedBounds);
+		    //System.out.println("OldBounds : " + b);
+		    
+		    f = Formula.compose(FormulaOperator.AND, resultingFormulas);
+			//System.out.println("By Solving: " + f);
+		    //System.out.println("HIT");
+		} else {
+		    //System.out.println("HIT2");
+		    //System.out.println("Additional Solve");
+		    //System.out.println("Solving: " + f);
+			// This is an additional constraint so we only need to run the substitutions on it.
+			f = reducer.reduceFormula(f);
+			//reducer.recreateUniverseAndBounds(b);
+			recreatedBounds = new Bounds(reducer.recreatedBounds.universe());//reducer.recreatedBounds;
+			//System.out.println("Bounds : " + recreatedBounds);
+			//System.out.println("By Solving: " + f);
+		}
+
 		final Solution solution;
 		try {			
 			final long startTransl = System.currentTimeMillis();
-			translation = translation==null ? Translator.translateIncremental(f, b, options) : Translator.translateIncremental(f, b, translation);
+			translation = translation==null ? Translator.translateIncremental(f, recreatedBounds, options) : Translator.translateIncremental(f, recreatedBounds, translation);
 			final long endTransl = System.currentTimeMillis();
 			
 			if (translation.trivial()) {
@@ -206,7 +244,7 @@ public final class IncrementalSolver implements KodkodSolver {
 			free();
 		}
 		
-		return solution;
+		return reducer.recompute(solution, recreatedBounds, originalBounds, this.options);
 	}
 
 	/**

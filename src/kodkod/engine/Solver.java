@@ -29,6 +29,7 @@ import java.util.NoSuchElementException;
 import kodkod.ast.Formula;
 import kodkod.ast.IntExpression;
 import kodkod.ast.Relation;
+import kodkod.ast.operator.FormulaOperator;
 import kodkod.engine.config.Options;
 import kodkod.engine.fol2sat.HigherOrderDeclException;
 import kodkod.engine.fol2sat.Translation;
@@ -41,6 +42,7 @@ import kodkod.engine.satlab.SATSolver;
 import kodkod.instance.Bounds;
 import kodkod.instance.Instance;
 import kodkod.instance.TupleSet;
+import kodkod.intelision.IntExprReduction;
 
 /**
  * A computational engine for solving relational satisfiability problems.
@@ -127,15 +129,26 @@ public final class Solver implements KodkodSolver {
 	 * @see Proof
 	 */
 	public Solution solve(Formula formula, Bounds bounds) throws HigherOrderDeclException, UnboundLeafException, AbortedException {
+    IntExprReduction reducer = new IntExprReduction();
+    Bounds recreatedBounds = null;
+    Formula[] resultingFormulas = reducer.reduceIntExpressions(formula);
+    reducer.getEqualityConstants();
+    reducer.recreateUniverseAndBounds(bounds);
+    recreatedBounds = reducer.recreatedBounds;
+
+    formula = Formula.compose(FormulaOperator.AND, resultingFormulas);
 
 		final long startTransl = System.currentTimeMillis();
+    final Solution solution;
 
 		try {
-			final Translation.Whole translation = Translator.translate(formula, bounds, options);
+			final Translation.Whole translation = Translator.translate(formula, recreatedBounds, options);
 			final long endTransl = System.currentTimeMillis();
 
-			if (translation.trivial())
-				return trivial(translation, endTransl - startTransl);
+			if (translation.trivial()) {
+				solution =  trivial(translation, endTransl - startTransl);
+			  return reducer.recompute(solution, recreatedBounds, bounds, this.options);
+      }
 
 			final SATSolver cnf = translation.cnf();
 
@@ -145,7 +158,8 @@ public final class Solver implements KodkodSolver {
 			final long endSolve = System.currentTimeMillis();
 
 			final Statistics stats = new Statistics(translation, endTransl - startTransl, endSolve - startSolve);
-			return isSat ? sat(translation, stats) : unsat(translation, stats);
+			solution = isSat ? sat(translation, stats) : unsat(translation, stats);
+			return reducer.recompute(solution, recreatedBounds, bounds, this.options);
 
 		} catch (SATAbortedException sae) {
 			throw new AbortedException(sae);
@@ -262,15 +276,33 @@ public final class Solver implements KodkodSolver {
 		private Translation.Whole translation;
 		private long translTime;
 		private int trivial;
+    private IntExprReduction reducer;
+    private Bounds originalBounds;
+    private Bounds recreatedBounds;
+    private Options options;
 
 		/**
 		 * Constructs a solution iterator for the given formula, bounds, and options.
 		 */
 		SolutionIterator(Formula formula, Bounds bounds, Options options) {
+      this.reducer = new IntExprReduction();
+      Formula[] resultingFormulas = this.reducer.reduceIntExpressions(formula);
+      this.reducer.getEqualityConstants();
+      this.reducer.recreateUniverseAndBounds(bounds);
+      
+      this.originalBounds = bounds;
+      this.recreatedBounds = this.reducer.recreatedBounds;
+      bounds = this.recreatedBounds;
+
+      formula = Formula.compose(FormulaOperator.AND, resultingFormulas);
+
+      System.out.println("Final formula is: " + formula);
+
 			this.translTime = System.currentTimeMillis();
 			this.translation = Translator.translate(formula, bounds, options);
 			this.translTime = System.currentTimeMillis() - translTime;
 			this.trivial = 0;
+      this.options = options;
 		}
 
 		/**
@@ -327,15 +359,20 @@ public final class Solver implements KodkodSolver {
 				sol = Solution.satisfiable(stats, transl.interpret());
 				// add the negation of the current model to the solver
 				final int[] notModel = new int[primaryVars];
+        System.out.println("Adding not model: ");
 				for(int i = 1; i <= primaryVars; i++) {
 					notModel[i-1] = cnf.valueOf(i) ? -i : i;
+          System.out.println("  " + notModel[i - 1]);
 				}
 				cnf.addClause(notModel);
 			} else {
 				sol = unsat(transl, stats); // this also frees up solver resources, if any
 				translation = null; // unsat, no more solutions
 			}
-			return sol;
+
+      System.out.println("Found un-recomputed solution:");
+      System.out.println(sol);
+			return reducer.recompute(sol, recreatedBounds, originalBounds, this.options);
 		}
 
 		/**
@@ -387,7 +424,10 @@ public final class Solver implements KodkodSolver {
 				translation = Translator.translate(formula, newBounds, transl.options());
 				translTime += System.currentTimeMillis() - startTransl;
 			}
-			return sol;
+
+      System.out.println("Found un-recomputed solution:");
+      System.out.println(sol);
+			return reducer.recompute(sol, recreatedBounds, originalBounds, this.options);
 		}
 
 	}
