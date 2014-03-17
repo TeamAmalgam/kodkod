@@ -140,6 +140,10 @@ final class SAT4J implements SATSolver {
 		solver = null;
 	}
 	
+  public SAT4J clone() throws CloneNotSupportedException {
+    throw new CloneNotSupportedException();
+  }
+
 	/**
 	 * A wrapper for an int array that provides
 	 * read-only access to the array via the IVecInt interface. 

@@ -57,7 +57,7 @@ import java.util.Stack;
  * 
  * @author Chris Kleynhans
  */
-public final class CheckpointedSolver implements KodkodSolver {
+public final class CheckpointedSolver implements KodkodSolver, Cloneable{
 
 	private final Options options;
 	private Translation.Checkpointed translation;
@@ -77,6 +77,50 @@ public final class CheckpointedSolver implements KodkodSolver {
 		this.outcomeCheckpoints = new Stack<Boolean>();
 		this.translationCheckpoints = new Stack<Translation.Checkpointed>();
 	}
+
+  /**
+   * Copy constructor.
+   */
+  private CheckpointedSolver(CheckpointedSolver solver) {
+    this.options = solver.options.clone();
+
+    if (solver.outcome == null) {
+      this.outcome = null;
+    } else {
+      this.outcome = new Boolean(solver.outcome);
+    }
+
+    this.outcomeCheckpoints = new Stack<Boolean>();
+    for (Boolean b : solver.outcomeCheckpoints) {
+      if (b == null) {
+        this.outcomeCheckpoints.add(null);
+      } else {
+        this.outcomeCheckpoints.add(new Boolean(b));
+      }
+    }
+
+    this.translationCheckpoints = new Stack<Translation.Checkpointed>();
+    Translation.Checkpointed last_translation_in_original = null;
+    Translation.Checkpointed last_translation_in_clone = null;
+    for (Translation.Checkpointed translation : solver.translationCheckpoints) {
+      Translation.Checkpointed translation_clone;
+      if (last_translation_in_original == translation) {
+        translation_clone = last_translation_in_clone;
+      } else {
+        translation_clone = translation.clone();
+      }
+
+      this.translationCheckpoints.add(translation_clone);
+      last_translation_in_original = translation;
+      last_translation_in_clone = translation_clone;
+    }
+
+    if (solver.translation == last_translation_in_original) {
+      this.translation = last_translation_in_clone;
+    } else {
+      this.translation = solver.translation.clone();
+    }
+  }
 	
 	/**
 	 * Returns a new {@link CheckpointedSolver} using the given options.   
@@ -233,4 +277,8 @@ public final class CheckpointedSolver implements KodkodSolver {
 		// Restore the checkpointed outcome.
 		outcome = outcomeCheckpoints.pop();
 	}
+
+  public CheckpointedSolver clone() {
+    return new CheckpointedSolver(this);
+  }
 }

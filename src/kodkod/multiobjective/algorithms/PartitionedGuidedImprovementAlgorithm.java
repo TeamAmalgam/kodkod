@@ -53,8 +53,6 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
         final List<Formula> exclusionConstraints = new ArrayList<Formula>();
         
-        exclusionConstraints.add(problem.getConstraints());
-
         // Disable MetricPoint logger temporarily
         // Multiple threads will be calling the logger, so the output won't make sense
         Logger metricPointLogger = Logger.getLogger(MetricPoint.class.toString());
@@ -64,9 +62,10 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         // Work up to a single Pareto point
         // If there is only one objective, this is the only Pareto point
         // For more objectives, we use this Pareto point to split the search space
-        IncrementalSolver solver = IncrementalSolver.solver(getOptions());
-        Formula constraint = Formula.and(exclusionConstraints);
+        CheckpointedSolver solver = CheckpointedSolver.solver(getOptions());
+        Formula constraint = problem.getConstraints();
         Solution solution = solver.solve(constraint, problem.getBounds());
+        solver.checkpoint();
 
         MetricPoint currentValues = null;
         Solution previousSolution = null;
@@ -79,7 +78,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             incrementStats(solution, problem, improvementConstraints, false, improvementConstraints);
         }
         foundParetoPoint(currentValues);
-        solver.free();
+        solver.rollback();
 
         if (!options.allSolutionsPerPoint()) {
             // no magnifying glass
@@ -127,7 +126,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             CountDownLatch doneSignal = new CountDownLatch(maxMapping - 1);
             for (int mapping = 1; mapping < maxMapping; mapping++) {
                 BitSet bitSet = BitSet.valueOf(new long[] { mapping });
-                tasks.add(new PartitionSearcherTask(mapping, problem, exclusionConstraints, currentValues.partitionConstraints(bitSet, objective_order), notifier, threadPool, doneSignal));
+                tasks.add(new PartitionSearcherTask(mapping, solver.clone(), problem, exclusionConstraints, currentValues.partitionConstraints(bitSet, objective_order), notifier, threadPool, doneSignal));
             }
 
             // Link up the dependencies
@@ -185,9 +184,12 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
         private boolean started = false;
         private boolean submitted = false;
+        
+        private CheckpointedSolver solver;
 
-        public PartitionSearcherTask(int taskID, MultiObjectiveProblem problem, List<Formula> exclusionConstraints, Formula partitionConstraints, SolutionNotifier notifier, ExecutorService threadPool, CountDownLatch doneSignal) {
+        public PartitionSearcherTask(int taskID, CheckpointedSolver solver, MultiObjectiveProblem problem, List<Formula> exclusionConstraints, Formula partitionConstraints, SolutionNotifier notifier, ExecutorService threadPool, CountDownLatch doneSignal) {
             this.taskID = taskID;
+            this.solver = solver;
             this.problem = problem;
             this.partitionConstraints = partitionConstraints;
             this.notifier = notifier;
@@ -264,9 +266,8 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             started = true;
 
             // Run the regular algorithm within this partition
-            CheckpointedSolver solver = CheckpointedSolver.solver(getOptions());
-            Formula constraint = Formula.and(exclusionConstraints).and(partitionConstraints);
-            Solution solution = solver.solve(constraint, problem.getBounds());
+            Formula constraint = partitionConstraints.and(exclusionConstraints);
+            Solution solution = solver.solve(constraint, new Bounds(problem.getBounds().universe()));
             incrementStats(solution, problem, constraint, false, constraint);
             solver.checkpoint();
 
@@ -315,9 +316,10 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             // Signal that this task has completed
             doneSignal.countDown();
           } catch (Exception e) {
-            logger.log(Level.SEVERE, "Task failed.");
-            logger.log(Level.SEVERE, e.toString());
-            throw new RuntimeException(e);
+            System.err.println("Task failed.");
+            System.err.println(e.toString());
+            e.printStackTrace();
+            System.exit(1);
           }
         }
     }

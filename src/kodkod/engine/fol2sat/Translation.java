@@ -24,6 +24,7 @@ package kodkod.engine.fol2sat;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.HashSet;
 
 import kodkod.ast.Relation;
 import kodkod.engine.bool.BooleanConstant;
@@ -362,7 +363,7 @@ public abstract class Translation {
 	/**
 	 * An incremental translation with checkpointing functionality.
 	 */
-	public static final class Checkpointed extends Translation {
+	public static final class Checkpointed extends Translation implements Cloneable {
 		/**
 		 * @invariant this.interpreter.universe = this.bounds.universe && 
 		 *            this.interpreter.relations in this.bounds.relations &&
@@ -399,6 +400,27 @@ public abstract class Translation {
 
 			this.boundsCheckpoints = new Stack<Bounds>();
 		}
+
+    private Checkpointed(Checkpointed original) {
+      super(original.bounds().clone(), original.options().clone());
+
+      this.interpreter = original.interpreter.clone();
+      this.incrementer = original.incrementer.clone();
+      
+      try {
+        this.symmetries = new HashSet<IntSet>();
+        for (IntSet symmetry : original.symmetries) {
+          this.symmetries.add(symmetry.clone());
+        }
+      } catch (CloneNotSupportedException e) {
+        throw new RuntimeException(e);
+      }
+
+      this.boundsCheckpoints = new Stack<Bounds>();
+      for (Bounds bounds : original.boundsCheckpoints) {
+        this.boundsCheckpoints.add(bounds.clone());
+      }
+    }
 		
 		/**
 		 * Returns the symmetries induced by the original bounds.
@@ -459,6 +481,10 @@ public abstract class Translation {
 			bounds().relations().retainAll(checkpointBounds.relations());
 			bounds().ints().retainAll(checkpointBounds.ints());
 		}
+
+    public Checkpointed clone() {
+      return new Checkpointed(this);
+    }
 	}
 
 	

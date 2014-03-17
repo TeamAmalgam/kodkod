@@ -56,6 +56,28 @@ abstract class NativeSolver implements SATSolver {
     	this.satCheckpoints = new Stack<Boolean>();
 //		System.out.println("created " + peer);
 	}
+
+  NativeSolver(long peer, NativeSolver original) {
+    this.peer = peer;
+    this.clauses = original.clauses;
+    this.vars = original.vars;
+    this.sat = original.sat;
+
+    this.clauseCheckpoints = new Stack<Integer>();
+    for (Integer i : original.clauseCheckpoints) {
+      this.clauseCheckpoints.add(i);
+    }
+
+    this.varsCheckpoints = new Stack<Integer>();
+    for (Integer i : original.varsCheckpoints) {
+      this.varsCheckpoints.add(i);
+    }
+
+    this.satCheckpoints = new Stack<Boolean>();
+    for (Boolean b : original.satCheckpoints) {
+      this.satCheckpoints.add(b);
+    }
+  }
 	
 	/**
 	 * Loads the JNI library for the given class.
@@ -274,5 +296,9 @@ abstract class NativeSolver implements SATSolver {
 	 * @return the assignment for the given literal
 	 */
 	abstract boolean valueOf(long peer, int literal);
+
+  public NativeSolver clone() throws CloneNotSupportedException {
+    throw new CloneNotSupportedException();
+  }
 
 }

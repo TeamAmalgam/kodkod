@@ -263,4 +263,8 @@ final class Z3 implements CheckpointableSolver {
 
       return expr;
     }
+
+    public Z3 clone() throws CloneNotSupportedException {
+      throw new CloneNotSupportedException();
+    }
 }

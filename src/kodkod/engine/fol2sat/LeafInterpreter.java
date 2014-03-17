@@ -42,6 +42,7 @@ import kodkod.util.ints.IntRange;
 import kodkod.util.ints.IntSet;
 import kodkod.util.ints.Ints;
 import kodkod.util.ints.SparseSequence;
+import kodkod.util.ints.TreeSequence;
 
 /** 
  * <p>Interprets the unquantified leaf expressions of a kodkod ast, {@link kodkod.ast.Relation relations} and
@@ -66,7 +67,7 @@ import kodkod.util.ints.SparseSequence;
  * 
  * @author Emina Torlak
  */
-final class LeafInterpreter {
+final class LeafInterpreter implements Cloneable {
 	private final BooleanFactory factory;
 	private final Universe universe;
 	private final Map<Relation, IntRange> vars;
@@ -104,6 +105,41 @@ final class LeafInterpreter {
 	private LeafInterpreter(Universe universe, Map<Relation, TupleSet> rbound, SparseSequence<TupleSet> ints, Options options) {
 		this(universe, rbound, rbound, ints, BooleanFactory.constantFactory(options), Collections.EMPTY_MAP);
 	}
+
+  /**
+   * Copy Constructor.
+   */
+  private LeafInterpreter(LeafInterpreter original) {
+    this.universe = original.universe;
+
+    this.lowers = new LinkedHashMap<Relation, TupleSet>();
+    for (Relation rel : original.lowers.keySet()) {
+      this.lowers.put(rel, original.lowers.get(rel).clone());
+    }
+
+    this.uppers = new LinkedHashMap<Relation, TupleSet>();
+    for (Relation rel : original.uppers.keySet()) {
+      this.uppers.put(rel, original.uppers.get(rel).clone());
+    }
+
+    try {
+      this.ints = original.ints.clone();
+    } catch (CloneNotSupportedException e) {
+      throw new RuntimeException(e);
+    }
+
+    Options o = new Options();
+    o.setIntEncoding(original.factory.intEncoding());
+    o.setBitwidth(original.factory.bitwidth());
+    o.setSharing(original.factory.comparisonDepth());
+
+    this.factory = BooleanFactory.factory(original.factory.numberOfVariables(), o);
+
+    this.vars = new LinkedHashMap<Relation, IntRange>();
+    for (Relation rel : original.vars.keySet()) {
+      this.vars.put(rel, original.vars.get(rel));
+    }
+  }
 	
 	/**
 	 * Returns an overapproximating interpreter for the given bounds and options.
@@ -325,4 +361,8 @@ final class LeafInterpreter {
 	public final int interpret(int i) {
 		return ints.get(i).indexView().min();
 	}
+
+  public LeafInterpreter clone() {
+    return new LeafInterpreter(this);
+  }
 }

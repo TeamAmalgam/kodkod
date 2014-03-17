@@ -315,4 +315,8 @@ final class ExternalSolver implements SATSolver {
 	public String toString() {
 		return executable + " " + options;
 	}
+
+  public ExternalSolver clone() throws CloneNotSupportedException {
+    throw new CloneNotSupportedException();
+  }
 }

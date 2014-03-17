@@ -48,7 +48,7 @@ import java.util.Stack;
  * @invariant meaning(roots) = meaning(cnf.clauses)
  * @author Emina Torlak
  */
-abstract class Bool2CNFTranslator implements BooleanVisitor<int[], Object> {
+abstract class Bool2CNFTranslator implements BooleanVisitor<int[], Object>, Cloneable {
 
 	/**
 	 * Creates a new instance of SATSolver using the provided factory
@@ -65,12 +65,9 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[], Object> {
 	 *          meaning(circuit) = meaning(cnf.clauses)
 	 */
 	static SATSolver translate(final BooleanFormula circuit, final int maxPrimaryVar, final SATFactory factory) {
-		final int maxLiteral = StrictMath.abs(circuit.label());		
-		final Bool2CNFTranslator translator = new Bool2CNFTranslator(factory.instance()) {
-			final PolarityDetector pdetector = (new PolarityDetector(maxPrimaryVar, maxLiteral)).apply(circuit);
-			boolean positive(int label) { return pdetector.positive(label); }
-			boolean negative(int label) { return pdetector.negative(label); }
-		};
+		final int maxLiteral = StrictMath.abs(circuit.label());
+    PolarityDetector pdetector = (new PolarityDetector(maxPrimaryVar, maxLiteral)).apply(circuit);
+		final Bool2CNFTranslator translator = new Bool2CNFTranslator(factory.instance(), pdetector) { };
 		return translator.translate(circuit, maxPrimaryVar).solver;
 	}
 	
@@ -103,7 +100,7 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[], Object> {
 	 */
 	static Bool2CNFTranslator translateIncremental(final BooleanFormula circuit, final int maxPrimaryVar, final SATFactory factory) {
 		assert factory.incremental();	
-		final Bool2CNFTranslator translator = new Bool2CNFTranslator(factory.instance()) { };
+		final Bool2CNFTranslator translator = new Bool2CNFTranslator(factory.instance(), null) { };
 		return translator.translate(circuit, maxPrimaryVar);
 	}
 	
@@ -118,7 +115,7 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[], Object> {
 	 */
 	static Bool2CNFTranslator translateIncremental(BooleanConstant value, final SATFactory factory) {
 		assert factory.incremental();	
-		return new Bool2CNFTranslator(translate(value, factory)) { };
+		return new Bool2CNFTranslator(translate(value, factory), null) { };
 	}
 	
 	/**
@@ -149,16 +146,37 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[], Object> {
 	private int checkpoints;
 	private final Stack<IntSet> visitedCheckpoints;
 
+  private final PolarityDetector pdetector;
+
 	/**
 	 * Constructs a translator for the given circuit.
 	 * @requires no solver.variables && solver.clauses
 	 * @ensures this.solver' = solver 
 	 */
-	private Bool2CNFTranslator(SATSolver solver) {
+	private Bool2CNFTranslator(SATSolver solver, PolarityDetector pd) {
 		this.solver = solver;
 		this.visited = new IntTreeSet();
 		this.visitedCheckpoints = new Stack<IntSet>();
+    this.pdetector = pd;
 	}
+
+  private Bool2CNFTranslator(Bool2CNFTranslator translator) {
+    try {
+      this.solver = translator.solver.clone();
+
+      this.visited = translator.visited.clone();
+      this.checkpoints = translator.checkpoints;
+      
+      this.visitedCheckpoints = new Stack<IntSet>();
+      for (IntSet set : translator.visitedCheckpoints) {
+        this.visitedCheckpoints.add(set.clone());
+      }
+
+      this.pdetector = translator.pdetector;
+    } catch (CloneNotSupportedException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
 	/**
 	 * Applies this translator to the given circuit, adding the translation of the
@@ -203,14 +221,26 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[], Object> {
 	 * @requires some f: (MultiGate + ITEGate) & components.(this.roots) | f.label = label
 	 * @return true if the gate with the given label occurs (or may occur) positively in this.roots
 	 */
-	boolean positive(int label) { return true; }
+	boolean positive(int label) {
+    if (pdetector == null) {
+      return true; 
+    } else {
+      return pdetector.positive(label);
+    }
+  }
 	
 	/**
 	 * Returns true if the gate with the given label occurs (or may occur) negatively in this.roots.
 	 * @requires some f: (MultiGate + ITEGate) & components.(this.roots) | f.label = label
 	 * @return true if the gate with the given label occurs (or may occur) negatively in this.roots.
 	 */
-	boolean negative(int label) { return true; }
+	boolean negative(int label) {
+    if (pdetector == null) {  
+      return true;
+    } else {
+      return pdetector.negative(label);
+    }
+  }
 	
 	/** @return 0->lit */
 	private final int[] clause(int lit) { 
@@ -347,6 +377,10 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[], Object> {
 
 		checkpoints -= 1;
 	}
+
+  public Bool2CNFTranslator clone() {
+    return new Bool2CNFTranslator(this) {};
+  }
 
 	/**
 	 * Helper visitor that detects polarity of subformulas.

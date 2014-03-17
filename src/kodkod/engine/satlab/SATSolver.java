@@ -107,5 +107,7 @@ public interface SATSolver {
 	 * @ensures frees the memory used by this solver
 	 */
 	public abstract void free();
+
+  public abstract SATSolver clone() throws CloneNotSupportedException;
 	
 }

@@ -35,8 +35,16 @@ final class MiniSat extends NativeSolver implements CheckpointableSolver {
 	 */
 	public MiniSat() {
 		super(make());
-        solverCheckpoints = new Stack<Long>();
+    solverCheckpoints = new Stack<Long>();
 	}
+
+  private MiniSat(MiniSat original) {
+    super(make_copy(original.peer()));
+    solverCheckpoints = new Stack<Long>();
+    for (Long checkpoint : original.solverCheckpoints) {
+      solverCheckpoints.add(make_copy(checkpoint));
+    }
+  }
 	
 	static {
 		loadLibrary(MiniSat.class);
@@ -117,5 +125,9 @@ final class MiniSat extends NativeSolver implements CheckpointableSolver {
     while (solverCheckpoints.size() > 0) {
       free(solverCheckpoints.pop());
     } 
+  }
+
+  public MiniSat clone() {
+    return new MiniSat(this);
   }
 }
