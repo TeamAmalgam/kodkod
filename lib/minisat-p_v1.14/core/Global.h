@@ -35,10 +35,17 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 typedef unsigned int uint;
 
 #ifdef _MSC_VER
-typedef INT64              int64;
-typedef UINT64             uint64;
-typedef INT_PTR            intp;
-typedef UINT_PTR           uintp;
+typedef signed __int64     int64;
+typedef unsigned __int64   uint64;
+
+#if defined(_WIN64)
+typedef signed __int64     intp;
+typedef unsigned __int64   uintp;
+#else
+typedef signed int 	   intp;
+typedef unsigned int       uintp;
+#endif
+
 #define I64_fmt "I64d"
 #else
 typedef long long          int64;
