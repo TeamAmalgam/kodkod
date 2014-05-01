@@ -29,12 +29,18 @@ import kodkod.multiobjective.statistics.StepCounter;
 
 public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorithm {
 
+    private CountDownLatch doneSignal;
+    private ExecutorService threadPool;
+    private SolutionNotifier notifier;
+
     public PartitionedGuidedImprovementAlgorithm(String desc, MultiObjectiveOptions options) {
         super(desc, options, Logger.getLogger(PartitionedGuidedImprovementAlgorithm.class.toString()));
     }
 
     @Override
-    public void multiObjectiveSolveImpl(MultiObjectiveProblem problem, SolutionNotifier notifier) {
+    public void multiObjectiveSolveImpl(MultiObjectiveProblem problem, SolutionNotifier solutionNotifier) {
+        notifier = solutionNotifier;
+
         // set the bit width
         setBitWidth(problem.getBitWidth());
 
@@ -94,7 +100,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             // Number of threads is MIN(user value, # cores)
             // TODO: Make "user value" configurable
             int poolSize = Math.min(8, Runtime.getRuntime().availableProcessors());
-            ExecutorService threadPool = Executors.newFixedThreadPool(poolSize);
+            threadPool = Executors.newFixedThreadPool(poolSize);
             logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
 
             // Create all the tasks up front, adding them to an array
@@ -117,10 +123,10 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             Objective[] objective_order = problem.getObjectives().toArray(new Objective[0]);
 
             int maxMapping = (int) Math.pow(2, numObjectives) - 1;
-            CountDownLatch doneSignal = new CountDownLatch(maxMapping - 1);
+            doneSignal = new CountDownLatch(maxMapping - 1);
             for (int mapping = 1; mapping < maxMapping; mapping++) {
                 BitSet bitSet = BitSet.valueOf(new long[] { mapping });
-                tasks.add(new PartitionSearcherTask(mapping, problem, exclusionConstraints, currentValues.partitionConstraints(bitSet, objective_order), notifier, threadPool, doneSignal));
+                tasks.add(new PartitionSearcherTask(mapping, problem, exclusionConstraints, currentValues.partitionConstraints(bitSet, objective_order)));
             }
 
             // Link up the dependencies
@@ -168,9 +174,6 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         private final int taskID;
         private final MultiObjectiveProblem problem;
         private Formula partitionConstraints;
-        private final SolutionNotifier notifier;
-        private final ExecutorService threadPool;
-        private final CountDownLatch doneSignal;
 
         private Set<Formula> exclusionConstraints = new HashSet<Formula>();
         private List<PartitionSearcherTask> children = new ArrayList<PartitionSearcherTask>();
@@ -179,13 +182,10 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         private boolean started = false;
         private boolean submitted = false;
 
-        public PartitionSearcherTask(int taskID, MultiObjectiveProblem problem, List<Formula> exclusionConstraints, Formula partitionConstraints, SolutionNotifier notifier, ExecutorService threadPool, CountDownLatch doneSignal) {
+        public PartitionSearcherTask(int taskID, MultiObjectiveProblem problem, List<Formula> exclusionConstraints, Formula partitionConstraints) {
             this.taskID = taskID;
             this.problem = problem;
             this.partitionConstraints = partitionConstraints;
-            this.notifier = notifier;
-            this.threadPool = threadPool;
-            this.doneSignal = doneSignal;
             this.exclusionConstraints.addAll(exclusionConstraints);
         }
 
