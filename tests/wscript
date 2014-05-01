@@ -23,7 +23,7 @@ def configure(conf):
     conf.env.append_value('CLASSPATH', conf.find_file('hamcrest-core.jar', conf.env.DEPS_DIR))
     conf.env.append_value('CLASSPATH', [conf.path.parent.ant_glob('**/org.sat4j.core.jar')[0].abspath()])
 
-    conf.env.append_value('LD_LIBRARY_PATH', abspath('./' + satlib(conf)))
+    conf.env.append_value('JAVA_LIBRARY_PATH', abspath('./' + satlib(conf)))
 
 
 def test_build(bld):
@@ -39,6 +39,7 @@ def test(tst):
     env = tst.all_envs['test']
     cmd = []
     cmd.extend(["java"])
+    cmd.extend(["-Djava.library.path=" + ":".join(env.JAVA_LIBRARY_PATH)])
     cmd.extend(["-cp"])
     if sys.platform == 'win32':
       cmd.extend([";".join(env.CLASSPATH)])
@@ -49,7 +50,6 @@ def test(tst):
     
     command_env = {}
     command_env.update(os.environ)
-    command_env.update({"LD_LIBRARY_PATH": env.LD_LIBRARY_PATH[0]})
     ret = tst.exec_command(cmd, cwd=tst.out_dir, env=command_env)
 
     if ret != 0:
