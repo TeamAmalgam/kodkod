@@ -13,13 +13,25 @@ all_solvers = [
     'minisat-p_v1.14',
     ]
 
+def is_windows(conf):
+    return (sys.platform == 'win32')
+
+def is_msvc(conf):
+    return (is_windows(conf) and (conf.env.CXX_NAME == 'msvc'))
+
+
 def options(opt):
     opt.recurse(all_solvers)               # set options for all solvers
 
 def configure(conf):
+    conf.load('compiler_cxx')
+
     env = conf.env
-    
-    if sys.platform == 'win32' :
+
+    print(is_windows(conf))
+    if is_msvc(conf) :
+        env.append_value('ENABLED_SOLVERS', ['glucose-2.1', 'minisat-2.2.0'])
+    elif is_windows(conf) :
         env.append_value('ENABLED_SOLVERS', ['glucose-2.1', 'minisat-2.2.0', 'minisat-p_v1.14'])
     else :
         env.append_value('ENABLED_SOLVERS', ['cryptominisat-2.9.5', 'glucose-2.1', 'lingeling-587f', 'minisat-2.2.0', 'minisat-p_v1.14'])
