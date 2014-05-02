@@ -12,6 +12,10 @@ VERSION = '2.0'
 def options(opt):
     solver_options = opt.add_option_group('solver options')
     solver_options.add_option('--no-solvers', dest='build_solvers', default=True, action='store_false', help="skips building native SAT solvers")
+
+    test_options = opt.add_option_group('test options')
+    test_options.add_option('--skip-tests', dest='run_tests', default=True, action='store_false', help="skips running tests")
+
     opt.recurse('src lib tests')
 
 def deps(ctx):
@@ -41,14 +45,17 @@ def test(tst):
     tst.recurse('tests')
 
 def all(ctx):
-    Options.commands = [
+    new_commands = [
         'build',
-        'install',
-        'test_build',
-        'test',
-        'dist'] + Options.commands
+        'install']
 
+    if Options.options.run_tests:
+        new_commands += [
+            'test_build',
+            'test']
 
+    new_commands += ['dist']
+    Options.commands = new_commands + Options.commands
 
 from waflib.Build import BuildContext
 class TestBuildContext(BuildContext):
