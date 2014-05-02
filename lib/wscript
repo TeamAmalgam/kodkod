@@ -28,7 +28,6 @@ def configure(conf):
 
     env = conf.env
 
-    print(is_windows(conf))
     if is_msvc(conf) :
         env.append_value('ENABLED_SOLVERS', ['glucose-2.1', 'minisat-2.2.0', 'cryptominisat-2.9.5'])
     elif is_windows(conf) :
