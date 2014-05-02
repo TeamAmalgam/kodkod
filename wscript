@@ -5,6 +5,7 @@ import os
 import os.path
 import sys
 from waflib import Options
+import urllib2
 
 APPNAME = 'kodkod'
 VERSION = '2.0'
@@ -85,5 +86,9 @@ class DepsContext(Context):
         deps_dir = os.path.abspath(deps_dir)
         for file, url in self.deps.iteritems():
             download_path = os.path.join(deps_dir, file)
-            cmd = ["curl", url, "-o", download_path]
-            self.exec_command(cmd)
+
+            self.to_log("Downloading " + file + " from " + url + "\n")
+            request = urllib2.urlopen(url)
+            file_handle = open(download_path, "wb")
+            file_handle.write(request.read())
+            file_handle.close()
