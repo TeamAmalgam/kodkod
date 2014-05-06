@@ -21,6 +21,7 @@
  */
 package kodkod.engine.config;
 
+import kodkod.engine.optimization.OptimizationPassFactory;
 import kodkod.engine.satlab.SATFactory;
 import kodkod.util.ints.IntRange;
 import kodkod.util.ints.Ints;
@@ -51,6 +52,7 @@ public final class Options implements Cloneable {
 	private int skolemDepth = 0;
 	private int logTranslation = 0;
 	private int coreGranularity = 0;
+	private OptimizationPassFactory optimizer = OptimizationPassFactory.NONE;
 
 	/**
 	 * Constructs an Options object initialized with default values.
@@ -288,6 +290,17 @@ public final class Options implements Cloneable {
 		this.coreGranularity = coreGranularity;
 	}
 
+	public OptimizationPassFactory optimizer() {
+		return optimizer;
+	}
+
+	public void setOptimizer(OptimizationPassFactory optimizer) {
+		if (optimizer == null)
+			throw new NullPointerException();
+
+		this.optimizer = optimizer;
+	}
+
 	/**
 	 * Returns a shallow copy of this Options object.  In particular,
 	 * the returned options shares the same {@linkplain #reporter()}
@@ -305,6 +318,7 @@ public final class Options implements Cloneable {
 		c.setSkolemDepth(skolemDepth);
 		c.setLogTranslation(logTranslation);
 		c.setCoreGranularity(coreGranularity);
+		c.setOptimizer(optimizer);
 		return c;
 	}
 
@@ -333,6 +347,8 @@ public final class Options implements Cloneable {
 		b.append(logTranslation);
 		b.append("\n coreGranularity: ");
 		b.append(coreGranularity);
+		b.append("\n optimizer: ");
+		b.append(optimizer);
 		return b.toString();
 	}
 

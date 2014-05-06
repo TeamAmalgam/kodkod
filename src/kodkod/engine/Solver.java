@@ -35,6 +35,7 @@ import kodkod.engine.fol2sat.Translation;
 import kodkod.engine.fol2sat.TranslationLog;
 import kodkod.engine.fol2sat.Translator;
 import kodkod.engine.fol2sat.UnboundLeafException;
+import kodkod.engine.optimization.OptimizationPass;
 import kodkod.engine.satlab.SATAbortedException;
 import kodkod.engine.satlab.SATProver;
 import kodkod.engine.satlab.SATSolver;
@@ -128,14 +129,20 @@ public final class Solver implements KodkodSolver {
 	 */
 	public Solution solve(Formula formula, Bounds bounds) throws HigherOrderDeclException, UnboundLeafException, AbortedException {
 
+		final OptimizationPass optimizer = this.options.optimizer().create();
 		final long startTransl = System.currentTimeMillis();
+
+		OptimizationPass.FormulaWithBounds transformedProblem =
+			optimizer.transform(new OptimizationPass.FormulaWithBounds(formula, bounds));
+		formula = transformedProblem.formula();
+		bounds = transformedProblem.bounds();
 
 		try {
 			final Translation.Whole translation = Translator.translate(formula, bounds, options);
 			final long endTransl = System.currentTimeMillis();
 
 			if (translation.trivial())
-				return trivial(translation, endTransl - startTransl);
+				return optimizer.translate(trivial(translation, endTransl - startTransl));
 
 			final SATSolver cnf = translation.cnf();
 
@@ -145,7 +152,7 @@ public final class Solver implements KodkodSolver {
 			final long endSolve = System.currentTimeMillis();
 
 			final Statistics stats = new Statistics(translation, endTransl - startTransl, endSolve - startSolve);
-			return isSat ? sat(translation, stats) : unsat(translation, stats);
+			return optimizer.translate(isSat ? sat(translation, stats) : unsat(translation, stats));
 
 		} catch (SATAbortedException sae) {
 			throw new AbortedException(sae);
@@ -262,13 +269,20 @@ public final class Solver implements KodkodSolver {
 		private Translation.Whole translation;
 		private long translTime;
 		private int trivial;
+		private OptimizationPass optimizer;
 
 		/**
 		 * Constructs a solution iterator for the given formula, bounds, and options.
 		 */
 		SolutionIterator(Formula formula, Bounds bounds, Options options) {
+			this.optimizer = options.optimizer().create();
+
 			this.translTime = System.currentTimeMillis();
-			this.translation = Translator.translate(formula, bounds, options);
+
+			OptimizationPass.FormulaWithBounds problem =
+				this.optimizer.transform(new OptimizationPass.FormulaWithBounds(formula, bounds));
+			this.translation = Translator.translate(problem.formula(), problem.bounds(), options);
+
 			this.translTime = System.currentTimeMillis() - translTime;
 			this.trivial = 0;
 		}
@@ -335,7 +349,7 @@ public final class Solver implements KodkodSolver {
 				sol = unsat(transl, stats); // this also frees up solver resources, if any
 				translation = null; // unsat, no more solutions
 			}
-			return sol;
+			return optimizer.translate(sol);
 		}
 
 		/**
