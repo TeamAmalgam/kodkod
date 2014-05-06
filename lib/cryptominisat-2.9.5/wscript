@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 # encoding: utf-8
 
+import sys
+
 def options(opt):
     opt.load('compiler_cxx')
     opt.load('java')
@@ -11,8 +13,14 @@ def configure(conf):
     conf.check_jni_headers()
     conf.env.append_value('DEFINES', ['__STDC_LIMIT_MACROS', '__STDC_FORMAT_MACROS', 'DISABLE_ZLIB'])
     conf.env.append_value('INCLUDES', ['.', '..'])
-    conf.env.append_value('CXXFLAGS', ['-Wall', '-O3', '-fopenmp', '-fPIC'])
-    conf.env.append_value('LINKFLAGS', ['-fopenmp'])
+
+    if sys.platform == 'win32' and conf.env.CXX_NAME == 'msvc' :
+        conf.env.append_value('CXXFLAGS', ['/W4','/O2', '/openmp'])
+        conf.env.append_value('LINKFLAGS', ['/openmp'])
+    else :
+        conf.env.append_value('CXXFLAGS', ['-Wall', '-O3', '-fopenmp', '-fPIC'])
+        conf.env.append_value('LINKFLAGS', ['-fopenmp'])
+
     conf.env.CORE_SRC = {'include' : ['cmsat/*.cpp'], 'exclude' : ['cmsat/Main*']}
     conf.env.JNI_SRC = {'include' : ['jni/*.cpp'], 'exclude' : []}
     

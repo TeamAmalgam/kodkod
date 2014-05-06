@@ -5,6 +5,8 @@ import os
 import os.path
 import sys
 from waflib import Options
+import urllib2
+import hashlib
 
 APPNAME = 'kodkod'
 VERSION = '2.0'
@@ -12,6 +14,10 @@ VERSION = '2.0'
 def options(opt):
     solver_options = opt.add_option_group('solver options')
     solver_options.add_option('--no-solvers', dest='build_solvers', default=True, action='store_false', help="skips building native SAT solvers")
+
+    test_options = opt.add_option_group('test options')
+    test_options.add_option('--skip-tests', dest='run_tests', default=True, action='store_false', help="skips running tests")
+
     opt.recurse('src lib tests')
 
 def deps(ctx):
@@ -41,14 +47,17 @@ def test(tst):
     tst.recurse('tests')
 
 def all(ctx):
-    Options.commands = [
+    new_commands = [
         'build',
-        'install',
-        'test_build',
-        'test',
-        'dist'] + Options.commands
+        'install']
 
+    if Options.options.run_tests:
+        new_commands += [
+            'test_build',
+            'test']
 
+    new_commands += ['dist']
+    Options.commands = new_commands + Options.commands
 
 from waflib.Build import BuildContext
 class TestBuildContext(BuildContext):
@@ -66,17 +75,34 @@ class DepsContext(Context):
     '''downloads project dependencies'''
     cmd = 'deps'
     fun = 'deps'
-    deps = {}
+    urls = {}
+    hashes = {}
 
-    def add_dep(self, file, url):
-        self.deps[file] = url
+    def add_dep(self, file, url, sha256_hash):
+        self.urls[file] = url
+        self.hashes[file] = sha256_hash
 
     def install_deps(self, deps_dir):
         if not os.path.exists(deps_dir):
           os.makedirs(deps_dir)
 
         deps_dir = os.path.abspath(deps_dir)
-        for file, url in self.deps.iteritems():
+        for file, url in self.urls.iteritems():
             download_path = os.path.join(deps_dir, file)
-            cmd = ["curl", url, "-o", download_path]
-            self.exec_command(cmd)
+
+            self.to_log("Downloading " + file + " from " + url + "\n")
+
+            # Download the file from the specified url.
+            request = urllib2.urlopen(url)
+            data = request.read();
+
+            # Calculate the SHA-256 hash of the file.
+            actual_sha2 = hashlib.sha256(data).hexdigest()
+            expected_sha2 = self.hashes[file]
+
+            if expected_sha2 == actual_sha2 :
+                file_handle = open(download_path, "wb")
+                file_handle.write(data)
+                file_handle.close()
+            else :
+                self.fatal('Failed to validate ' + file + ' expected hash "' + expected_sha2 + '" got "' + actual_sha2 + '".')
