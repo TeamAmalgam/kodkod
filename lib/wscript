@@ -13,12 +13,25 @@ all_solvers = [
     'minisat-p_v1.14',
     ]
 
+# MSVC cannot build minisat-p_v1.14 because File.h requires unistd.h
+# MSVC cannot build lingeling-587f because it requires unistd.h
+msvc_solvers = [
+    'glucose-2.1',
+    'minisat-2.2.0',
+    'cryptominisat-2.9.5'
+    ]
+
+mingw_solvers = [
+    'glucose-2.1',
+    'minisat-2.2.0',
+    'minisat-p_v1.14'
+    ]
+
 def is_windows(conf):
     return (sys.platform == 'win32')
 
 def is_msvc(conf):
     return (is_windows(conf) and (conf.env.CXX_NAME == 'msvc'))
-
 
 def options(opt):
     opt.recurse(all_solvers)               # set options for all solvers
@@ -29,38 +42,38 @@ def configure(conf):
     env = conf.env
 
     if is_msvc(conf) :
-        env.append_value('ENABLED_SOLVERS', ['glucose-2.1', 'minisat-2.2.0', 'cryptominisat-2.9.5'])
+        env.append_value('ENABLED_SOLVERS', msvc_solvers)
     elif is_windows(conf) :
-        env.append_value('ENABLED_SOLVERS', ['glucose-2.1', 'minisat-2.2.0', 'minisat-p_v1.14'])
+        env.append_value('ENABLED_SOLVERS', mingw_solvers)
     else :
-        env.append_value('ENABLED_SOLVERS', ['cryptominisat-2.9.5', 'glucose-2.1', 'lingeling-587f', 'minisat-2.2.0', 'minisat-p_v1.14'])
+        env.append_value('ENABLED_SOLVERS', all_solvers)
 
     for solver in env.ENABLED_SOLVERS:             # create configuration environments for all solvers
         conf.setenv(solver, env)
         conf.env.solver=solver
         conf.recurse(solver)
-    
+
 def build(bld):
     if not bld.variant:                 # no solver specified, build all
         import waflib.Options
-        for x in bld.env.ENABLED_SOLVERS: 
+        for x in bld.env.ENABLED_SOLVERS:
             waflib.Options.commands.insert(0, bld.cmd + '_' + x)
-    else:                               
+    else:
         if bld.cmd.startswith('install'):
             bld.env.PREFIX = bld.env.BINDIR = bld.env.LIBDIR = ''
             if len(bld.options.destdir) == 0:
                 bld.options.destdir = repr(bld.srcnode.make_node(satlib(bld)))
-        bld.recurse(bld.variant)       
+        bld.recurse(bld.variant)
 
 def satlib(bld):
     if sys.platform == 'win32':
         return "win_" + bld.env.DEST_CPU
     else:
         return bld.env.DEST_OS + "_" + bld.env.DEST_CPU
-    
+
 for solver in all_solvers:
     for y in (BuildContext, CleanContext, InstallContext, UninstallContext):
         name = y.__name__.replace('Context','').lower()
-        class tmp(y): 
+        class tmp(y):
             cmd = name + '_' + solver
             variant = solver
