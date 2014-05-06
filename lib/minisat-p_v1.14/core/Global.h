@@ -42,7 +42,7 @@ typedef unsigned __int64   uint64;
 typedef signed __int64     intp;
 typedef unsigned __int64   uintp;
 #else
-typedef signed int 	   intp;
+typedef signed int         intp;
 typedef unsigned int       uintp;
 #endif
 
