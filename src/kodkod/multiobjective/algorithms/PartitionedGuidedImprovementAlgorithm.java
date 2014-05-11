@@ -63,9 +63,32 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         // Work up to a single Pareto point
         // If there is only one objective, this is the only Pareto point
         // For more objectives, we use this Pareto point to split the search space
+        MetricPoint firstParetoPoint = findFirstParetoPoint(problem, exclusionConstraints);
+
+        // Start the subtasks and block until they complete
+        // If there is only one objective, the method simply returns
+        startSubtasks(problem, exclusionConstraints, firstParetoPoint);
+
+        logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
+
+        // Re-enable MetricPoint logging
+        metricPointLogger.setLevel(metricPointLevel);
+
+        end(notifier);
+        debugWriteStatistics();
+    }
+
+    private void foundParetoPoint(int taskID, MetricPoint metricpoint) {
+        getStats().increment(StatKey.OPTIMAL_METRIC_POINTS);
+        logger.log(Level.FINE, "Task {0}: Found Pareto point with values: {1}", new Object[] { taskID, metricpoint.values() });
+    }
+
+    // Returns the Pareto point we just found
+    private MetricPoint findFirstParetoPoint(MultiObjectiveProblem problem, List<Formula> exclusionConstraints) {
+        // Use an incremental solver because we don't roll back here
+        // The incremental solver uses less memory than the checkpointed solver
         IncrementalSolver solver = IncrementalSolver.solver(getOptions());
-        Formula constraint = Formula.and(exclusionConstraints);
-        Solution solution = solver.solve(constraint, problem.getBounds());
+        Solution solution = solver.solve(Formula.and(exclusionConstraints), problem.getBounds());
 
         MetricPoint currentValues = null;
         Solution previousSolution = null;
@@ -93,80 +116,74 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         }
         exclusionConstraints.add(currentValues.exclusionConstraint());
 
-        // If we have more than one objective, split the problem up
-        // Otherwise, we're done
-        if (problem.getObjectives().size() > 1) {
-            // Create the thread pool
-            // Number of threads is MIN(user value, # cores)
-            // TODO: Make "user value" configurable
-            int poolSize = Math.min(8, Runtime.getRuntime().availableProcessors());
-            threadPool = Executors.newFixedThreadPool(poolSize);
-            logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
-
-            // Create all the tasks up front, adding them to an array
-            logger.log(Level.FINE, "Partitioning the problem space");
-            List<PartitionSearcherTask> tasks = new ArrayList<PartitionSearcherTask>();
-            // Task at index 0 doesn't exist; it's in an excluded region
-            // We only add null so all the tasks are added at the right index
-            tasks.add(null);
-
-            // Now we can split the search space based on the Pareto point and create new tasks
-            // For n metrics, we want all combinations of m_i <= M_i and m_i >= M_i where M_i is the current value
-            // To iterate over this, we map the bit_i of a bitset to metric_i
-            // Note that bit_0 is the least significant bit
-            // We skip 0 (the partition that is already dominated) and 2^n - 1 (the partition where we didn't find any solutions)
-            // Give each task a CountDownLatch so this thread can wait until all 2^n - 2 tasks have completed
-            int numObjectives = problem.getObjectives().size();
-
-            // Convert the objective set into an array so we have a deterministic order
-            // for mapping the bits in the bitset to objectives.
-            Objective[] objective_order = problem.getObjectives().toArray(new Objective[0]);
-
-            int maxMapping = (int) Math.pow(2, numObjectives) - 1;
-            doneSignal = new CountDownLatch(maxMapping - 1);
-            for (int mapping = 1; mapping < maxMapping; mapping++) {
-                BitSet bitSet = BitSet.valueOf(new long[] { mapping });
-                tasks.add(new PartitionSearcherTask(mapping, problem, exclusionConstraints, currentValues.partitionConstraints(bitSet, objective_order)));
-            }
-
-            // Link up the dependencies
-            for (int mapping = 1; mapping < maxMapping; mapping++) {
-                PartitionSearcherTask task = tasks.get(mapping);
-                task.linkDependencies(tasks);
-            }
-
-            // Submit starting tasks (the ones without dependencies) to the thread pool
-            // Starting tasks are mapped to the ints with exactly one 0 bit
-            // So iterate over the bitset and clear one bit at a time
-            for (int bitIndex = 0; bitIndex < numObjectives; bitIndex++) {
-                BitSet bitSet = BitSet.valueOf(new long[] { maxMapping });
-                bitSet.clear(bitIndex);
-                int taskIndex = (int) bitSet.toLongArray()[0];
-                threadPool.submit(tasks.get(taskIndex));
-            }
-
-            // Wait for all tasks to complete before shutting down the pool
-            try {
-                doneSignal.await();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
-            threadPool.shutdown();
-        }
-
-        logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
-
-        // Re-enable MetricPoint logging
-        metricPointLogger.setLevel(metricPointLevel);
-
-        end(notifier);
-        debugWriteStatistics();
+        return currentValues;
     }
 
-    protected void foundParetoPoint(int taskID, MetricPoint metricpoint) {
-        getStats().increment(StatKey.OPTIMAL_METRIC_POINTS);
-        logger.log(Level.FINE, "Task {0}: Found Pareto point with values: {1}", new Object[] { taskID, metricpoint.values() });
+    // This method blocks
+    // It creates the subtasks and blocks until they complete
+    // If there is only one objective, the method returns
+    private void startSubtasks(MultiObjectiveProblem problem, List<Formula> exclusionConstraints, MetricPoint firstParetoPoint) {
+        if (problem.getObjectives().size() == 1) {
+            return;
+        }
+
+        // Create the thread pool
+        // Number of threads is MIN(user value, # cores)
+        // TODO: Make "user value" configurable
+        int poolSize = Math.min(8, Runtime.getRuntime().availableProcessors());
+        threadPool = Executors.newFixedThreadPool(poolSize);
+        logger.log(Level.FINE, "Starting a thread pool with {0} threads", new Object[] { poolSize });
+
+        // Create all the tasks up front, adding them to an array
+        logger.log(Level.FINE, "Partitioning the problem space");
+        List<PartitionSearcherTask> tasks = new ArrayList<PartitionSearcherTask>();
+        // Task at index 0 doesn't exist; it's in an excluded region
+        // We only add null so all the tasks are added at the right index
+        tasks.add(null);
+
+        // Now we can split the search space based on the Pareto point and create new tasks
+        // For n metrics, we want all combinations of m_i <= M_i and m_i >= M_i where M_i is the current value
+        // To iterate over this, we map the bit_i of a bitset to metric_i
+        // Note that bit_0 is the least significant bit
+        // We skip 0 (the partition that is already dominated) and 2^n - 1 (the partition where we didn't find any solutions)
+        // Give each task a CountDownLatch so this thread can wait until all 2^n - 2 tasks have completed
+        int numObjectives = problem.getObjectives().size();
+
+        // Convert the objective set into an array so we have a deterministic order
+        // for mapping the bits in the bitset to objectives.
+        Objective[] objective_order = problem.getObjectives().toArray(new Objective[0]);
+
+        int maxMapping = (int) Math.pow(2, numObjectives) - 1;
+        doneSignal = new CountDownLatch(maxMapping - 1);
+        for (int mapping = 1; mapping < maxMapping; mapping++) {
+            BitSet bitSet = BitSet.valueOf(new long[] { mapping });
+            tasks.add(new PartitionSearcherTask(mapping, problem, exclusionConstraints, firstParetoPoint.partitionConstraints(bitSet, objective_order)));
+        }
+
+        // Link up the dependencies
+        for (int mapping = 1; mapping < maxMapping; mapping++) {
+            PartitionSearcherTask task = tasks.get(mapping);
+            task.linkDependencies(tasks);
+        }
+
+        // Submit starting tasks (the ones without dependencies) to the thread pool
+        // Starting tasks are mapped to the ints with exactly one 0 bit
+        // So iterate over the bitset and clear one bit at a time
+        for (int bitIndex = 0; bitIndex < numObjectives; bitIndex++) {
+            BitSet bitSet = BitSet.valueOf(new long[] { maxMapping });
+            bitSet.clear(bitIndex);
+            int taskIndex = (int) bitSet.toLongArray()[0];
+            threadPool.submit(tasks.get(taskIndex));
+        }
+
+        // Wait for all tasks to complete before shutting down the pool
+        try {
+            doneSignal.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+        threadPool.shutdown();
     }
 
     private class PartitionSearcherTask implements Runnable {
