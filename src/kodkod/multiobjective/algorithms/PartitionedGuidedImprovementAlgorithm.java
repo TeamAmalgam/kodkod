@@ -28,7 +28,6 @@ import kodkod.multiobjective.statistics.StatKey;
 import kodkod.multiobjective.statistics.StepCounter;
 
 public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorithm {
-
     private CountDownLatch doneSignal;
     private ExecutorService threadPool;
     private SolutionNotifier notifier;
@@ -39,41 +38,29 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
     @Override
     public void multiObjectiveSolveImpl(MultiObjectiveProblem problem, SolutionNotifier solutionNotifier) {
+        // "Prologue." Initialization before we start the solve.
         notifier = solutionNotifier;
-
-        // set the bit width
-        setBitWidth(problem.getBitWidth());
-
-        // for the evaluation we need a step counter
-        this.counter = new StepCounter();
-
-        //begin, amongst others, start the timer
-        begin();
-
+        counter = new StepCounter();            // initialize step counter for evaluation
+        setBitWidth(problem.getBitWidth());     // set bitwidth
         final List<Formula> exclusionConstraints = new ArrayList<Formula>();
-
         exclusionConstraints.add(problem.getConstraints());
+        begin();                                // begin, amongst others, start timer
 
-        // Disable MetricPoint logger temporarily
-        // Multiple threads will be calling the logger, so the output won't make sense
+        // Temporarily disable logging, since multiple threads will call the logger
         Logger metricPointLogger = Logger.getLogger(MetricPoint.class.toString());
         Level metricPointLevel = metricPointLogger.getLevel();
         metricPointLogger.setLevel(Level.INFO);
 
-        // Work up to a single Pareto point
-        // If there is only one objective, this is the only Pareto point
-        // For more objectives, we use this Pareto point to split the search space
+        // Start the actual solve by finding the first Pareto point
         MetricPoint firstParetoPoint = findFirstParetoPoint(problem, exclusionConstraints);
 
-        // Start the subtasks and block until they complete
-        // If there is only one objective, the method simply returns
+        // Given the first Pareto point, split the search space and start a new
+        // task for each region. Block until all tasks are complete.
         startSubtasks(problem, exclusionConstraints, firstParetoPoint);
 
+        // "Epilogue." Log that we're finished, clean up state, and dump statistics
         logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
-
-        // Re-enable MetricPoint logging
         metricPointLogger.setLevel(metricPointLevel);
-
         end(notifier);
         debugWriteStatistics();
     }
@@ -83,7 +70,8 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         logger.log(Level.FINE, "Task {0}: Found Pareto point with values: {1}", new Object[] { taskID, metricpoint.values() });
     }
 
-    // Returns the Pareto point we just found
+    // This method finds the first Pareto point, so we can use its values to split the search space.
+    // Returns: the Pareto point we just found
     private MetricPoint findFirstParetoPoint(MultiObjectiveProblem problem, List<Formula> exclusionConstraints) {
         // Use an incremental solver because we don't roll back here
         // The incremental solver uses less memory than the checkpointed solver
@@ -119,16 +107,15 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         return currentValues;
     }
 
-    // This method blocks
-    // It creates the subtasks and blocks until they complete
-    // If there is only one objective, the method returns
+    // Given the first Pareto point, split the search space and assign a task for each region.
+    // Block until all tasks are complete.
     private void startSubtasks(MultiObjectiveProblem problem, List<Formula> exclusionConstraints, MetricPoint firstParetoPoint) {
+        // If there was only one objective, then there is only one Pareto point, so we were already done.
         if (problem.getObjectives().size() == 1) {
             return;
         }
 
-        // Create the thread pool
-        // Number of threads is MIN(user value, # cores)
+        // Create the thread pool with MIN(user value, # cores) threads
         // TODO: Make "user value" configurable
         int poolSize = Math.min(8, Runtime.getRuntime().availableProcessors());
         threadPool = Executors.newFixedThreadPool(poolSize);
@@ -138,13 +125,12 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         logger.log(Level.FINE, "Partitioning the problem space");
         List<PartitionSearcherTask> tasks = new ArrayList<PartitionSearcherTask>();
         // Task at index 0 doesn't exist; it's in an excluded region
-        // We only add null so all the tasks are added at the right index
+        // Add a null task so all the tasks are added at the right index
         tasks.add(null);
 
-        // Now we can split the search space based on the Pareto point and create new tasks
-        // For n metrics, we want all combinations of m_i <= M_i and m_i >= M_i where M_i is the current value
+        // Split the search space and create new tasks.
+        // For n metrics, we want all combinations of m_i < M_i and m_i >= M_i where M_i is the current value
         // To iterate over this, we map the bit_i of a bitset to metric_i
-        // Note that bit_0 is the least significant bit
         // We skip 0 (the partition that is already dominated) and 2^n - 1 (the partition where we didn't find any solutions)
         // Give each task a CountDownLatch so this thread can wait until all 2^n - 2 tasks have completed
         int numObjectives = problem.getObjectives().size();
@@ -160,7 +146,7 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             tasks.add(new PartitionSearcherTask(mapping, problem, exclusionConstraints, firstParetoPoint.partitionConstraints(bitSet, objective_order)));
         }
 
-        // Link up the dependencies
+        // Compute and link up the dependencies
         for (int mapping = 1; mapping < maxMapping; mapping++) {
             PartitionSearcherTask task = tasks.get(mapping);
             task.linkDependencies(tasks);
@@ -187,7 +173,6 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
     }
 
     private class PartitionSearcherTask implements Runnable {
-
         private final int taskID;
         private final MultiObjectiveProblem problem;
         private Formula partitionConstraints;
@@ -207,9 +192,9 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
         }
 
         // Each task is represented by a binary string
-        // "Adjacent" tasks have only one bit changed
-        // If the adjacent task has one more 1 than this task, then it's a parent (this task depends on it)
-        // If the adjacent task has one more 0 than this task, then it's a child (depends on this task)
+        // "Neighbouring" tasks have only one bit that's different
+        // If the neighbouring task has one more 1 than this task, then it's a parent (that this task depends on)
+        // If the neighbouring task has one more 0 than this task, then it's a child (that depends on this task)
         public void linkDependencies(List<PartitionSearcherTask> tasks) {
             if (started) {
                 throw new IllegalStateException("Cannot link dependencies after task has already started.");
@@ -217,15 +202,13 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
             int numObjectives = problem.getObjectives().size();
 
-            // Iterate over adjacent tasks
+            // Iterate over adjacent tasks, flipping bits to get the child or parent
             for (int bitIndex = 0; bitIndex < numObjectives; bitIndex++) {
                 BitSet neighbour = BitSet.valueOf(new long[] { taskID });
 
-                // If this current bit is a 1, set it to a 0 to get the child
-                // If this current bit is a 0, set it to a 1 to get the parent
                 if (neighbour.get(bitIndex)) {
                     neighbour.clear(bitIndex);
-                    // Skip over task of all bits are cleared (neighbour = 0) since that task doesn't exist
+                    // Skip over task if all bits are cleared (neighbour = 0) since that task doesn't exist
                     if (neighbour.cardinality() == 0) {
                         continue;
                     }
@@ -261,74 +244,74 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
                 threadPool.submit(this);
                 submitted = true;
             } else if (!parentDoneStatus.containsValue(false) && submitted) {
-                // If we reach this point, it means the task has been submitted before it was notified
-                // by a parent, which shouldn't be possible
                 throw new RuntimeException("Task has already been submitted.");
             }
         }
 
+        // Now run the GIA within the provided region
+        // TODO: Recursively call PGIA (though we'll need to set a depth)
         @Override
         public void run() {
-          try {
-            logger.log(Level.FINE, "Starting Task {0}. At time: {1}", new Object[] { taskID, Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)) });
-            started = true;
+            try {
+                logger.log(Level.FINE, "Starting Task {0}. At time: {1}", new Object[] { taskID, Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)) });
+                started = true;
 
-            // Run the regular algorithm within this partition
-            CheckpointedSolver solver = CheckpointedSolver.solver(getOptions());
-            Formula constraint = Formula.and(exclusionConstraints).and(partitionConstraints);
-            Solution solution = solver.solve(constraint, problem.getBounds());
-            incrementStats(solution, problem, constraint, false, constraint);
-            solver.checkpoint();
-
-            // Work up to the Pareto front
-            MetricPoint currentValues = null;
-            Solution previousSolution = null;
-            while (isSat(solution)) {
-                while (isSat(solution)) {
-                    currentValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
-                    logger.log(Level.FINE, "Found a solution. At time: {0}, Improving on {1}", new Object[] { Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)),  currentValues.values() });
-
-                    Formula improvementConstraints = currentValues.parametrizedImprovementConstraints();
-                    previousSolution = solution;
-                    solution = solver.solve(improvementConstraints, new Bounds(problem.getBounds().universe()));
-                    incrementStats(solution, problem, improvementConstraints, false, improvementConstraints);
-                }
-                foundParetoPoint(taskID, currentValues);
-
-                if (!options.allSolutionsPerPoint()) {
-                    // no magnifying glass
-                    // previous solution was on the pareto front: report it
-                    tell(notifier, previousSolution, currentValues);
-                } else {
-                    // magnifying glass
-                    final Collection<Formula> assignmentsConstraints = currentValues.assignmentConstraints();
-                    assignmentsConstraints.add(problem.getConstraints());
-                    int solutionsFound = magnifier(Formula.and(assignmentsConstraints), problem.getBounds(), currentValues, notifier);
-                    logger.log(Level.FINE, "Magnifying glass on {0} found {1} solution(s). At time: {2}", new Object[] {currentValues.values(), Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
-                }
-
-                solver.rollback();
-                exclusionConstraints.add(currentValues.exclusionConstraint());
-                solution = solver.solve(currentValues.exclusionConstraint(), new Bounds(problem.getBounds().universe()));
-                incrementStats(solution, problem, constraint, false, null);
+                // Run the regular algorithm within this partition
+                CheckpointedSolver solver = CheckpointedSolver.solver(getOptions());
+                Formula constraint = Formula.and(exclusionConstraints).and(partitionConstraints);
+                Solution solution = solver.solve(constraint, problem.getBounds());
+                incrementStats(solution, problem, constraint, false, constraint);
                 solver.checkpoint();
+
+                // Work up to the Pareto front
+                MetricPoint currentValues = null;
+                Solution previousSolution = null;
+                while (isSat(solution)) {
+                    while (isSat(solution)) {
+                        currentValues = MetricPoint.measure(solution, problem.getObjectives(), getOptions());
+                        logger.log(Level.FINE, "Found a solution. At time: {0}, Improving on {1}", new Object[] { Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)),  currentValues.values() });
+
+                        Formula improvementConstraints = currentValues.parametrizedImprovementConstraints();
+                        previousSolution = solution;
+                        solution = solver.solve(improvementConstraints, new Bounds(problem.getBounds().universe()));
+                        incrementStats(solution, problem, improvementConstraints, false, improvementConstraints);
+                    }
+                    foundParetoPoint(taskID, currentValues);
+
+                    if (!options.allSolutionsPerPoint()) {
+                        // no magnifying glass
+                        // previous solution was on the pareto front: report it
+                        tell(notifier, previousSolution, currentValues);
+                    } else {
+                        // magnifying glass
+                        final Collection<Formula> assignmentsConstraints = currentValues.assignmentConstraints();
+                        assignmentsConstraints.add(problem.getConstraints());
+                        int solutionsFound = magnifier(Formula.and(assignmentsConstraints), problem.getBounds(), currentValues, notifier);
+                        logger.log(Level.FINE, "Magnifying glass on {0} found {1} solution(s). At time: {2}", new Object[] {currentValues.values(), Integer.valueOf(solutionsFound), Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000))});
+                    }
+
+                    solver.rollback();
+                    exclusionConstraints.add(currentValues.exclusionConstraint());
+                    solution = solver.solve(currentValues.exclusionConstraint(), new Bounds(problem.getBounds().universe()));
+                    incrementStats(solution, problem, constraint, false, null);
+                    solver.checkpoint();
+                }
+
+                logger.log(Level.FINE, "Finishing Task {0}. At time: {1}", new Object[] { taskID, Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)) });
+
+                // Done searching in this partition, so pass this dependency to children and notify them
+                // Child will schedule itself if it's done
+                for (PartitionSearcherTask child : children) {
+                    child.notifyDone(taskID, exclusionConstraints);
+                }
+
+                // Signal that this task has completed
+                doneSignal.countDown();
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Task failed.");
+                logger.log(Level.SEVERE, e.toString());
+                throw new RuntimeException(e);
             }
-
-            logger.log(Level.FINE, "Finishing Task {0}. At time: {1}", new Object[] { taskID, Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)) });
-
-            // Done searching in this partition, so pass this dependency to children and notify them
-            // Child will schedule itself if it's done
-            for (PartitionSearcherTask child : children) {
-                child.notifyDone(taskID, exclusionConstraints);
-            }
-
-            // Signal that this task has completed
-            doneSignal.countDown();
-          } catch (Exception e) {
-            logger.log(Level.SEVERE, "Task failed.");
-            logger.log(Level.SEVERE, e.toString());
-            throw new RuntimeException(e);
-          }
         }
     }
 }
