@@ -129,7 +129,7 @@ public final class Solver implements KodkodSolver {
 	 */
 	public Solution solve(Formula formula, Bounds bounds) throws HigherOrderDeclException, UnboundLeafException, AbortedException {
 
-		final OptimizationPass optimizer = this.options.optimizer().create();
+		final OptimizationPass optimizer = this.options.optimizer().create(options);
 		final long startTransl = System.currentTimeMillis();
 
 		OptimizationPass.FormulaWithBounds transformedProblem =
@@ -275,7 +275,7 @@ public final class Solver implements KodkodSolver {
 		 * Constructs a solution iterator for the given formula, bounds, and options.
 		 */
 		SolutionIterator(Formula formula, Bounds bounds, Options options) {
-			this.optimizer = options.optimizer().create();
+			this.optimizer = options.optimizer().create(options);
 
 			this.translTime = System.currentTimeMillis();
 

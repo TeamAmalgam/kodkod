@@ -21,12 +21,14 @@
  */
 package kodkod.engine.optimization;
 
+import kodkod.engine.config.Options;
+
 public abstract class OptimizationPassFactory {
-    public abstract OptimizationPass create();
+    public abstract OptimizationPass create(Options options);
 
     public static OptimizationPassFactory NONE = new OptimizationPassFactory() {
-        public OptimizationPass create() {
-            return new OptimizationSeries(new OptimizationPass[]{});
+        public OptimizationPass create(Options options) {
+            return new OptimizationSeries(options, new OptimizationPass[]{});
         }
     };
 
@@ -35,14 +37,14 @@ public abstract class OptimizationPassFactory {
 
         return new OptimizationPassFactory() {
 
-            public OptimizationPass create() {
+            public OptimizationPass create(Options options) {
                 OptimizationPass[] materializedPasses = new OptimizationPass[passesToCreate.length];
 
                 for (int i =  0; i < passesToCreate.length; i += 1) {
-                    materializedPasses[i] = passesToCreate[i].create();
+                    materializedPasses[i] = passesToCreate[i].create(options);
                 }
 
-                return new OptimizationSeries(materializedPasses);
+                return new OptimizationSeries(options, materializedPasses);
             }
 
         };

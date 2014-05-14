@@ -23,6 +23,7 @@ package kodkod.engine.optimization;
 
 import kodkod.ast.Formula;
 import kodkod.engine.Solution;
+import kodkod.engine.config.Options;
 import kodkod.instance.Bounds;
 
 /**
@@ -32,7 +33,7 @@ public class OptimizationSeries implements OptimizationPass {
 
     private OptimizationPass[] passes;
 
-    OptimizationSeries(OptimizationPass[] passes) {
+    OptimizationSeries(Options options, OptimizationPass[] passes) {
         this.passes = passes;
     }
 

@@ -116,7 +116,7 @@ public final class IncrementalSolver implements KodkodSolver {
 	private IncrementalSolver(Options options) {
 		this.options = options;
 		this.outcome = null;
-		this.optimizer = options.optimizer().create();
+		this.optimizer = options.optimizer().create(options);
 	}
 
 	/**
