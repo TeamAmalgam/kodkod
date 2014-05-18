@@ -44,8 +44,8 @@ def all(ctx):
     Options.commands = [
         'build',
         'install',
-        'test_build',
-        'test',
+        #'test_build',
+        #'test',
         'dist'] + Options.commands
 
 

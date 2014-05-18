@@ -31,6 +31,9 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
     private CountDownLatch doneSignal;
     private ExecutorService threadPool;
     private SolutionNotifier notifier;
+    private int depth;
+    private boolean finished;
+    private Set<Formula> finalExclusionConstraints = new HashSet<Formula>();
 
     public PartitionedGuidedImprovementAlgorithm(String desc, MultiObjectiveOptions options) {
         super(desc, options, Logger.getLogger(PartitionedGuidedImprovementAlgorithm.class.toString()));
@@ -38,12 +41,18 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
     @Override
     public void multiObjectiveSolveImpl(MultiObjectiveProblem problem, SolutionNotifier solutionNotifier) {
+        multiObjectiveSolveImpl(problem, solutionNotifier, 0);
+    }
+
+    private void multiObjectiveSolveImpl(MultiObjectiveProblem problem, SolutionNotifier solutionNotifier, int depth) {
         // "Prologue." Initialization before we start the solve.
         notifier = solutionNotifier;
         counter = new StepCounter();            // initialize step counter for evaluation
         setBitWidth(problem.getBitWidth());     // set bitwidth
         final List<Formula> exclusionConstraints = new ArrayList<Formula>();
         exclusionConstraints.add(problem.getConstraints());
+        this.depth = depth;
+        finished = false;
         begin();                                // begin, amongst others, start timer
 
         // Temporarily disable logging, since multiple threads will call the logger
@@ -56,13 +65,26 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
         // Given the first Pareto point, split the search space and start a new
         // task for each region. Block until all tasks are complete.
-        startSubtasks(problem, exclusionConstraints, firstParetoPoint);
+        finalExclusionConstraints = startSubtasks(problem, exclusionConstraints, firstParetoPoint);
 
-        // "Epilogue." Log that we're finished, clean up state, and dump statistics
-        logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
-        metricPointLogger.setLevel(metricPointLevel);
-        end(notifier);
-        debugWriteStatistics();
+        // "Epilogue."
+        // If this is the top call, log that we're finished, clean up state, and dump statistics
+        // Otherwise, we have to extract the exclusion constraints
+        finished = true;
+        if (depth == 0) {
+            logger.log(Level.FINE, "All Pareto points found. At time: {0}", Integer.valueOf((int)(System.currentTimeMillis()-startTime)/1000));
+            metricPointLogger.setLevel(metricPointLevel);
+            end(notifier);
+            debugWriteStatistics();
+        }
+    }
+
+    private Set<Formula> getFinalExclusionConstraints() {
+        if (!finished) {
+            throw new IllegalStateException("Cannot get the final exclusion constraint if solving has not yet finished.");
+        }
+
+        return finalExclusionConstraints;
     }
 
     private void foundParetoPoint(int taskID, MetricPoint metricpoint) {
@@ -109,10 +131,12 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
 
     // Given the first Pareto point, split the search space and assign a task for each region.
     // Block until all tasks are complete.
-    private void startSubtasks(MultiObjectiveProblem problem, List<Formula> exclusionConstraints, MetricPoint firstParetoPoint) {
+    // Returns the "final" exclusion constraints for this problem
+    private Set<Formula> startSubtasks(MultiObjectiveProblem problem, List<Formula> exclusionConstraints, MetricPoint firstParetoPoint) {
         // If there was only one objective, then there is only one Pareto point, so we were already done.
         if (problem.getObjectives().size() == 1) {
-            return;
+            Set<Formula> toReturn = new HashSet<Formula>(exclusionConstraints);
+            return toReturn;
         }
 
         // Create the thread pool with MIN(user value, # cores) threads
@@ -170,6 +194,19 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             throw new RuntimeException(e);
         }
         threadPool.shutdown();
+
+        // Get the exclusion constraints of the "ending" tasks
+        // They already contain the constraints of their parent tasks
+        Set<Formula> toReturn = new HashSet<Formula>();
+        for (int bitIndex = 0; bitIndex < numObjectives; bitIndex++) {
+            BitSet bitSet = BitSet.valueOf(new long[] { 0 });
+            bitSet.set(bitIndex);
+            int taskIndex = (int) bitSet.toLongArray()[0];
+            PartitionSearcherTask task = tasks.get(taskIndex);
+            toReturn.addAll(task.getExclusionConstraints());
+        }
+
+        return toReturn;
     }
 
     private class PartitionSearcherTask implements Runnable {
@@ -189,6 +226,10 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
             this.problem = problem;
             this.partitionConstraints = partitionConstraints;
             this.exclusionConstraints.addAll(exclusionConstraints);
+        }
+
+        public Set<Formula> getExclusionConstraints() {
+            return exclusionConstraints;
         }
 
         // Each task is represented by a binary string
@@ -256,6 +297,8 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
                 logger.log(Level.FINE, "Starting Task {0}. At time: {1}", new Object[] { taskID, Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)) });
                 started = true;
 
+boolean NONRECURSIVE = false;
+if (NONRECURSIVE) {
                 // Run the regular algorithm within this partition
                 CheckpointedSolver solver = CheckpointedSolver.solver(getOptions());
                 Formula constraint = Formula.and(exclusionConstraints).and(partitionConstraints);
@@ -296,6 +339,24 @@ public class PartitionedGuidedImprovementAlgorithm extends MultiObjectiveAlgorit
                     incrementStats(solution, problem, constraint, false, null);
                     solver.checkpoint();
                 }
+} else {
+                // Create a new MultiObjectiveProblem, copying everything but updating the constraints
+                Formula constraint = Formula.and(exclusionConstraints).and(partitionConstraints);
+                final MultiObjectiveProblem subproblem = new MultiObjectiveProblem(problem.getBounds(), problem.getBitWidth(), constraint, problem.getObjectives());
+
+                // Create an algorithm (PGIA) to solve it
+                final PartitionedGuidedImprovementAlgorithm algorithm = new PartitionedGuidedImprovementAlgorithm("PGIA", options);
+                Thread solverThread = new Thread(new Runnable() {
+                    public void run() {
+                        algorithm.multiObjectiveSolve(subproblem, notifier);
+                    }
+                });
+                solverThread.start();
+                solverThread.join();
+
+                // Need to get the result exclusion constraints
+                exclusionConstraints = algorithm.getFinalExclusionConstraints();
+}
 
                 logger.log(Level.FINE, "Finishing Task {0}. At time: {1}", new Object[] { taskID, Integer.valueOf((int)((System.currentTimeMillis()-startTime)/1000)) });
 
